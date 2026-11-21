@@ -1,0 +1,26 @@
+[workspace]
+resolver = "2"
+members = ["crates/looseleaf-core", "crates/looseleaf-cli"]
+
+[workspace.package]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.91"
+repository = "https://github.com/david-engelmann/looseleaf"
+
+[workspace.dependencies]
+looseleaf-core = { path = "crates/looseleaf-core", version = "0.1.0" }
+
+[workspace.lints.rust]
+missing_docs = "deny"
+
+[workspace.lints.clippy]
+all = "deny"
+pedantic = "deny"
+todo = "deny"
+unimplemented = "deny"
+allow_attributes_without_reason = "deny"
+
+[profile.dev]
+# This box is small. Keep dev builds light.
+debug = 1
