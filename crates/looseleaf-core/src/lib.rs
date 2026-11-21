@@ -23,6 +23,8 @@ pub mod bundle;
 pub mod check;
 pub mod claim;
 pub mod frontmatter;
+pub mod registry;
+pub mod write;
 
 pub use check::{CheckReport, Finding, Severity, check_bundle};
 

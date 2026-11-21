@@ -136,6 +136,15 @@ reason and the identity of its replacement, never silently dropped. A
 registry whose identity set differs from the layers it indexes is
 stale, and staleness is a check failure.
 
+Regeneration is deterministic. The same bundle state rendered with the
+same generated stamp produces byte-identical output. The date and the
+reason on a withheld line come from the curated layer's superseded
+claims section when the supersession has been promoted there, because
+that section is where the synthesis contract puts them. Before
+promotion, the date falls back to the daily file that carries the
+replacing claim, and the line carries no reason rather than an
+invented one.
+
 ## 5. The frontmatter subset
 
 Looseleaf frontmatter is a deliberate subset of YAML, small enough to

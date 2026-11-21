@@ -159,3 +159,18 @@ red-team re-audit of the finished state, an independent line-by-line
 review of the diff on the two axes of spec fidelity and standards, and
 the owner's own verification pass with the key checks re-run firsthand.
 A single green run is not a review.
+
+## D13. Writer conventions
+
+Added 2026-11-21 with the writer slice. The frontmatter serializer
+renders the canonical block form defined in PROFILE.md section 5 and
+quotes a scalar only when the plain form would not parse back to the
+same text, so a parsed value always renders to the same bytes. Edits
+to an existing document go through a line-preserving upsert that
+replaces only the target key's lines, which is the mechanism behind
+the unknown-key preservation D8 requires. The claim registry format
+is owned by the tool outright. Regeneration takes its generated stamp
+as an input rather than reading a clock, so the same bundle state
+with the same stamp renders byte-identically, and the write lands
+through a sibling temporary file renamed over the target, so a failed
+write never truncates the registry that was there.

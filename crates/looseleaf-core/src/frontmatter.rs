@@ -54,6 +54,12 @@ pub struct Frontmatter {
 }
 
 impl Frontmatter {
+    /// Every entry, in document order.
+    #[must_use]
+    pub fn entries(&self) -> &[(String, Value)] {
+        &self.entries
+    }
+
     /// Look up a top-level key.
     #[must_use]
     pub fn get(&self, key: &str) -> Option<&Value> {
