@@ -7,8 +7,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::claim::{scan_claims, Claim};
-use crate::frontmatter::{parse_document, Frontmatter};
+use crate::claim::{Claim, scan_claims};
+use crate::frontmatter::{Frontmatter, parse_document};
 
 /// The layer a file belongs to, derived from its top-level directory.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -165,7 +165,9 @@ fn collect_markdown(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
-    let mut paths: Vec<PathBuf> = entries.filter_map(|entry| entry.ok().map(|e| e.path())).collect();
+    let mut paths: Vec<PathBuf> = entries
+        .filter_map(|entry| entry.ok().map(|e| e.path()))
+        .collect();
     paths.sort();
     for path in paths {
         let name = path

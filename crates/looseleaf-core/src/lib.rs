@@ -24,7 +24,7 @@ pub mod check;
 pub mod claim;
 pub mod frontmatter;
 
-pub use check::{check_bundle, CheckReport, Finding, Severity};
+pub use check::{CheckReport, Finding, Severity, check_bundle};
 
 /// The version of the Open Knowledge Format that the looseleaf profile
 /// targets. Bundles declare this version in the `okf_version` field of

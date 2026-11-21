@@ -130,7 +130,9 @@ pub fn parse_document(text: &str) -> Document {
 }
 
 fn strip_opening_fence(text: &str) -> Option<&str> {
-    let rest = text.strip_prefix("---\n").or_else(|| text.strip_prefix("---\r\n"))?;
+    let rest = text
+        .strip_prefix("---\n")
+        .or_else(|| text.strip_prefix("---\r\n"))?;
     Some(rest)
 }
 
@@ -237,19 +239,13 @@ fn parse_map(
             break;
         }
         if line.indent > indent {
-            return Err(format!(
-                "line {} is indented past its mapping",
-                line.number
-            ));
+            return Err(format!("line {} is indented past its mapping", line.number));
         }
         if line.content.starts_with("- ") || line.content == "-" {
             break;
         }
         let Some((key, rest)) = split_entry(&line.content) else {
-            return Err(format!(
-                "line {} is not a key and value entry",
-                line.number
-            ));
+            return Err(format!("line {} is not a key and value entry", line.number));
         };
         if entries.iter().any(|(name, _)| name == key) {
             return Err(format!("duplicate key {key} in one mapping"));
@@ -321,8 +317,7 @@ fn parse_list(
             entries.extend(more);
             items.push(Value::Map(entries));
         } else {
-            let value =
-                parse_flow(&item_text).map_err(|m| format!("line {item_number} {m}"))?;
+            let value = parse_flow(&item_text).map_err(|m| format!("line {item_number} {m}"))?;
             items.push(value);
         }
     }
@@ -344,7 +339,9 @@ fn parse_flow(text: &str) -> Result<Value, String> {
                 continue;
             }
             let Some((key, rest)) = split_entry(part) else {
-                return Err(format!("has a flow entry that is not a key and value, {part}"));
+                return Err(format!(
+                    "has a flow entry that is not a key and value, {part}"
+                ));
             };
             if entries.iter().any(|(name, _)| name == key) {
                 return Err(format!("repeats the flow key {key}"));
@@ -414,7 +411,7 @@ fn split_top_level(text: &str, separator: char) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_document, parse_scalar, Value};
+    use super::{Value, parse_document, parse_scalar};
 
     fn scalar(value: &Value) -> &str {
         value.as_scalar().expect("expected a scalar")

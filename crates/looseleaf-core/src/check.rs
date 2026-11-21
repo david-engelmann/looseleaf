@@ -11,9 +11,9 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use crate::bundle::{read_bundle, Bundle, ConceptFile, Layer, LAYERS};
-use crate::frontmatter::Value;
 use crate::OKF_VERSION;
+use crate::bundle::{Bundle, ConceptFile, LAYERS, Layer, read_bundle};
+use crate::frontmatter::Value;
 
 /// How serious a finding is. Errors fail the check. Warnings are
 /// reported for the next synthesis pass and do not fail it.
@@ -166,7 +166,9 @@ fn check_layout(bundle: &Bundle, out: &mut Findings) {
         if dir == "target" {
             continue;
         }
-        let known = LAYERS.iter().any(|layer| layer.dir_name() == Some(dir.as_str()));
+        let known = LAYERS
+            .iter()
+            .any(|layer| layer.dir_name() == Some(dir.as_str()));
         if !known {
             out.warning(
                 "LAYOUT_UNKNOWN_DIR",
@@ -200,7 +202,10 @@ fn check_layout(bundle: &Bundle, out: &mut Findings) {
         }
     }
     for file in &bundle.files {
-        if file.layer == Layer::Root && !file.reserved && !file.is_registry && !file.rel_path.contains('/')
+        if file.layer == Layer::Root
+            && !file.reserved
+            && !file.is_registry
+            && !file.rel_path.contains('/')
         {
             out.warning(
                 "LAYOUT_ROOT_FILE",
@@ -289,8 +294,12 @@ fn check_concept(bundle: &Bundle, file: &ConceptFile, out: &mut Findings) {
         .get("generated")
         .and_then(Value::as_map)
         .is_some_and(|entries| {
-            entries.iter().any(|(k, v)| k == "by" && v.as_scalar().is_some())
-                && entries.iter().any(|(k, v)| k == "at" && v.as_scalar().is_some())
+            entries
+                .iter()
+                .any(|(k, v)| k == "by" && v.as_scalar().is_some())
+                && entries
+                    .iter()
+                    .any(|(k, v)| k == "at" && v.as_scalar().is_some())
         });
     if !generated_ok {
         out.error(
@@ -367,11 +376,7 @@ fn check_bank_shape(file: &ConceptFile, out: &mut Findings) {
 }
 
 fn check_daily_name(file: &ConceptFile, out: &mut Findings) {
-    let name = file
-        .rel_path
-        .rsplit('/')
-        .next()
-        .unwrap_or(&file.rel_path);
+    let name = file.rel_path.rsplit('/').next().unwrap_or(&file.rel_path);
     let stem = name.strip_suffix(".md").unwrap_or(name);
     let bytes = stem.as_bytes();
     let iso = bytes.len() == 10
@@ -435,8 +440,7 @@ fn check_claims(bundle: &Bundle, out: &mut Findings) {
             }
         }
     }
-    let known: std::collections::BTreeSet<&String> =
-        daily.keys().chain(curated.keys()).collect();
+    let known: std::collections::BTreeSet<&String> = daily.keys().chain(curated.keys()).collect();
     for file in &bundle.files {
         if !matches!(file.layer, Layer::Daily | Layer::Curated) {
             continue;

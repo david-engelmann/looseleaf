@@ -83,7 +83,10 @@ fn dangling_supersession_is_caught() {
         )
     });
     let found = codes(&dir);
-    assert!(found.contains(&"CLAIM_SUPERSEDES_DANGLING"), "got {found:?}");
+    assert!(
+        found.contains(&"CLAIM_SUPERSEDES_DANGLING"),
+        "got {found:?}"
+    );
 }
 
 #[test]
@@ -112,7 +115,10 @@ fn registry_drift_is_caught() {
 fn unresolved_source_is_caught() {
     let dir = defect_copy("source");
     mutate(&dir, "people/ada.md", |text| {
-        text.replace("resource: daily/2026-11-01.md", "resource: daily/2026-12-25.md")
+        text.replace(
+            "resource: daily/2026-11-01.md",
+            "resource: daily/2026-12-25.md",
+        )
     });
     let found = codes(&dir);
     assert!(found.contains(&"SRC_UNRESOLVED"), "got {found:?}");
