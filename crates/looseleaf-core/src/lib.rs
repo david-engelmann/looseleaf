@@ -8,15 +8,23 @@
 //! verbatim quote and a source, and a generated claim registry that
 //! holds the supersession chain for the whole bundle.
 //!
-//! This crate holds the deterministic half of the system. It reads and
-//! writes bundles, checks them against the profile and regenerates the
-//! index and the claim registry. It never calls a model. The judgment
-//! half of looseleaf, the synthesis pass that decides what to promote and
-//! what to supersede, ships as a written contract that a host agent
-//! executes. See DECISIONS.md in the repository root.
+//! This crate holds the deterministic half of the system. It reads
+//! bundles and checks them against the profile. It never calls a
+//! model. The judgment half of looseleaf, the synthesis pass that
+//! decides what to promote and what to supersede, ships as a written
+//! contract that a host agent executes. See DECISIONS.md in the
+//! repository root and the profile in `docs/PROFILE.md`.
 //!
-//! At the scaffold stage this crate carries the profile constants only.
-//! Bundle reading lands in the first build slice.
+//! The first build slice carries the bundle reader and the checker.
+//! Writing, index regeneration and registry regeneration land in
+//! later slices.
+
+pub mod bundle;
+pub mod check;
+pub mod claim;
+pub mod frontmatter;
+
+pub use check::{check_bundle, CheckReport, Finding, Severity};
 
 /// The version of the Open Knowledge Format that the looseleaf profile
 /// targets. Bundles declare this version in the `okf_version` field of
