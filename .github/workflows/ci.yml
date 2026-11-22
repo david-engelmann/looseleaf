@@ -1,0 +1,120 @@
+name: ci
+
+# Gate design for looseleaf, on the fleet pattern.
+# The merge verdict is hosted green on the exact head plus the three
+# reviews of the checkpoint rule in DECISIONS.md D12. The hygiene job
+# checks the required files, the copy bar on the README, the dash rule
+# on every Markdown file by codepoint scan, and the toolchain pin.
+# The rust job runs format, clippy, tests and docs on the pinned
+# toolchain. The msrv job builds and tests at the declared
+# rust-version, because that declaration is a promise. There is no
+# audit job, because the workspace carries no dependencies to audit,
+# and no windows job, because looseleaf claims no second platform yet.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  hygiene:
+    name: hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Required files and the copy bar
+        run: |
+          python3 - <<'PY'
+          import pathlib, sys
+          root = pathlib.Path(".")
+          required = [
+              "README.md",
+              "DECISIONS.md",
+              "docs/PROFILE.md",
+              "skills/looseleaf-synthesis/SKILL.md",
+              "rust-toolchain.toml",
+              "Cargo.toml",
+              "Cargo.lock",
+              "LICENSE-MIT",
+              "LICENSE-APACHE",
+              ".github/workflows/ci.yml",
+          ]
+          missing = [p for p in required if not (root / p).is_file()]
+          if missing:
+              print("missing required files:", missing)
+              sys.exit(1)
+          # Dash rule on every Markdown file, by codepoint scan, never
+          # by a shell pattern that can miss the character.
+          bad = []
+          for md in root.rglob("*.md"):
+              if ".git" in md.parts:
+                  continue
+              text = md.read_text(encoding="utf-8")
+              if chr(0x2014) in text or chr(0x2013) in text:
+                  bad.append(str(md))
+          if bad:
+              print("em dash or en dash found in:", bad)
+              sys.exit(1)
+          # The full copy bar binds the public README. No colons, no
+          # semicolons, no em dashes.
+          readme = (root / "README.md").read_text(encoding="utf-8")
+          for name, ch in [("colon", ":"), ("semicolon", ";"), ("em dash", chr(0x2014))]:
+              if ch in readme:
+                  print(f"copy bar breach in README.md, found a {name}")
+                  sys.exit(1)
+          print("hygiene ok")
+          PY
+      - name: Toolchain pin is present and singular
+        run: |
+          grep -E '^channel = "[0-9]+\.[0-9]+\.[0-9]+"' rust-toolchain.toml
+          test "$(grep -c '^channel' rust-toolchain.toml)" = "1"
+
+  rust:
+    name: rust
+    runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: "-D warnings"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install the pinned toolchain
+        run: |
+          rustup toolchain install
+          rustup show active-toolchain
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - name: Test
+        run: cargo test --workspace --all-features --no-fail-fast
+      - name: Doc
+        run: cargo doc --workspace --all-features --no-deps
+
+  msrv:
+    name: msrv
+    runs-on: ubuntu-latest
+    env:
+      # The declared rust-version is a promise, so CI builds and tests
+      # at exactly that version. RUSTUP_TOOLCHAIN overrides the
+      # development pin in rust-toolchain.toml.
+      RUSTUP_TOOLCHAIN: "1.88.0"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install the declared rust-version
+        run: |
+          rustup toolchain install 1.88.0
+          rustup show active-toolchain
+      - name: Build at the declared rust-version
+        run: cargo build --workspace --all-features
+      - name: Test at the declared rust-version
+        run: cargo test --workspace --all-features --no-fail-fast

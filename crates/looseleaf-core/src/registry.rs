@@ -124,28 +124,26 @@ pub fn render_registry(bundle: &Bundle, at: &str) -> String {
                 .and_then(|s| s.date.clone())
                 .or_else(|| daily_date_of(bundle, replacement));
             let reason = section.and_then(|s| s.reason.clone());
-            let mut line = format!("- {id} withheld, superseded by {replacement}");
-            if let Some(date) = &date {
-                line.push_str(&format!(" on {date}"));
-            }
-            line.push('.');
-            if let Some(reason) = &reason {
-                line.push_str(&format!(" Reason, {reason}."));
-            }
+            let line = match (&date, &reason) {
+                (Some(date), Some(reason)) => format!(
+                    "- {id} withheld, superseded by {replacement} on {date}. Reason, {reason}."
+                ),
+                (Some(date), None) => {
+                    format!("- {id} withheld, superseded by {replacement} on {date}.")
+                }
+                (None, Some(reason)) => {
+                    format!("- {id} withheld, superseded by {replacement}. Reason, {reason}.")
+                }
+                (None, None) => format!("- {id} withheld, superseded by {replacement}."),
+            };
             lines.push(line);
         } else {
             lines.push(format!("- {id} current."));
         }
     }
-    let mut out = String::new();
-    out.push_str("---\n");
-    out.push_str("type: Claim Registry\n");
-    out.push_str("title: \"Claim registry\"\n");
-    out.push_str("description: \"Generated index of every claim chain in the bundle.\"\n");
-    out.push_str(&format!(
-        "generated: {{ by: \"process:looseleaf\", at: \"{at}\" }}\n"
-    ));
-    out.push_str("---\n\n# Claim registry\n\n");
+    let mut out = format!(
+        "---\ntype: Claim Registry\ntitle: \"Claim registry\"\ndescription: \"Generated index of every claim chain in the bundle.\"\ngenerated: {{ by: \"process:looseleaf\", at: \"{at}\" }}\n---\n\n# Claim registry\n\n"
+    );
     out.push_str(&lines.join("\n"));
     out.push('\n');
     out
