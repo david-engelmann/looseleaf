@@ -3,6 +3,7 @@
 //! test that cannot fail for the defect it plants is worthless, so
 //! every defect test asserts the exact rule code it exists to catch.
 
+use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -459,7 +460,7 @@ fn bank_shape_is_caught() {
         "---\ntype: Memory Bank\ntitle: \"Bank\"\ndescription: \"A bank concept.\"\ngenerated: { by: \"process:test\", at: \"2026-11-02T00:00:00Z\" }\nsources:\n  - id: root-index\n    resource: index.md\n---\n\n",
     );
     for line in 0..251 {
-        body.push_str(&format!("bank line {line}\n"));
+        writeln!(body, "bank line {line}").expect("write to a string");
     }
     write_file(&dir, "bank/bank.md", &body);
     assert!(codes(&dir).contains(&"BANK_SHAPE"));

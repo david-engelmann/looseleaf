@@ -77,8 +77,9 @@ Further keys carry fixed meanings.
   provenance never goes in `sources`, because a message id does not
   resolve for a consumer. Message provenance lives in claim blocks.
 - `verified` is written only when a verification actually happened, as
-  a mapping with `by` and `at`, the actor who did it and when. A
-  machine actor never stamps a human actor.
+  a mapping with `by` and `at`, the actor who did it and when, or as a
+  list of such mappings when a concept has been verified more than
+  once. A machine actor never stamps a human actor.
 - `stale_after` is written only under the staleness rules in the
   synthesis contract. Inventing a review date is a contract breach.
 - `status` and `superseded_by` are used exactly as the standard defines

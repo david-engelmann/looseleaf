@@ -388,6 +388,20 @@ fn check_concept(bundle: &Bundle, file: &ConceptFile, out: &mut Findings) {
     }
 }
 
+/// Whether one verification record carries scalar `by` and `at`
+/// entries. A `verified` value is one such record or a list of them,
+/// because a concept can be verified more than once.
+fn verified_record_ok(value: &Value) -> bool {
+    value.as_map().is_some_and(|entries| {
+        entries
+            .iter()
+            .any(|(k, v)| k == "by" && v.as_scalar().is_some())
+            && entries
+                .iter()
+                .any(|(k, v)| k == "at" && v.as_scalar().is_some())
+    })
+}
+
 fn check_verified_shape(
     file: &ConceptFile,
     frontmatter: &crate::frontmatter::Frontmatter,
@@ -396,19 +410,16 @@ fn check_verified_shape(
     let Some(verified) = frontmatter.get("verified") else {
         return;
     };
-    let shape_ok = verified.as_map().is_some_and(|entries| {
-        entries
-            .iter()
-            .any(|(k, v)| k == "by" && v.as_scalar().is_some())
-            && entries
-                .iter()
-                .any(|(k, v)| k == "at" && v.as_scalar().is_some())
-    });
+    let shape_ok = match verified {
+        Value::Map(_) => verified_record_ok(verified),
+        Value::List(items) => !items.is_empty() && items.iter().all(verified_record_ok),
+        Value::Scalar(_) => false,
+    };
     if !shape_ok {
         out.error(
             "FM_VERIFIED",
             &file.rel_path,
-            "verified is present but is not a mapping with by and at entries naming the actor and the time".to_owned(),
+            "verified is present but does not carry by and at entries naming the actor and the time".to_owned(),
         );
     }
 }
