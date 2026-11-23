@@ -61,7 +61,7 @@ fn clean_bundle_passes_without_findings() {
         report.findings
     );
     assert!(report.passed());
-    assert_eq!(report.files_checked, 11);
+    assert_eq!(report.files_checked, 12);
 }
 
 #[test]

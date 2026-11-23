@@ -50,7 +50,7 @@ fn plain_safe(text: &str) -> bool {
     if text.starts_with("- ") || text == "-" {
         return false;
     }
-    if text.contains(": ") || text.ends_with(':') || text.contains(" #") {
+    if text.contains(": ") || text.ends_with(':') || text.contains(" #") || text.contains('"') {
         return false;
     }
     !text.contains('\n') && !text.contains('\t')
