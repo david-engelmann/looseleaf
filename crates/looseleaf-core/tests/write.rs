@@ -56,6 +56,21 @@ fn renderer_reproduces_the_fixture_registry_byte_for_byte() {
 }
 
 #[test]
+fn a_hostile_stamp_cannot_break_the_registry_frontmatter() {
+    let bundle = read_bundle(&clean_fixture());
+    let rendered = render_registry(&bundle, "2026-11-02\"\nlicense: forged");
+    let document = looseleaf_core::frontmatter::parse_document(&rendered);
+    assert!(
+        document.parse_error.is_none(),
+        "the rendered registry must parse, got {:?}",
+        document.parse_error
+    );
+    let frontmatter = document.frontmatter.expect("registry frontmatter");
+    assert_eq!(frontmatter.get_scalar("type"), Some("Claim Registry"));
+    assert_eq!(frontmatter.get_scalar("license"), None);
+}
+
+#[test]
 fn regeneration_is_a_no_op_on_a_current_registry() {
     let dir = fixture_copy("noop");
     let changed = regenerate_registry(&dir, STAMP).expect("regenerate");

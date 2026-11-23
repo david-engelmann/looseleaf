@@ -67,9 +67,9 @@ jobs:
               print("em dash or en dash found in:", bad)
               sys.exit(1)
           # The full copy bar binds the public README. No colons, no
-          # semicolons, no em dashes.
+          # semicolons, no em dashes, no en dashes.
           readme = (root / "README.md").read_text(encoding="utf-8")
-          for name, ch in [("colon", ":"), ("semicolon", ";"), ("em dash", chr(0x2014))]:
+          for name, ch in [("colon", ":"), ("semicolon", ";"), ("em dash", chr(0x2014)), ("en dash", chr(0x2013))]:
               if ch in readme:
                   print(f"copy bar breach in README.md, found a {name}")
                   sys.exit(1)

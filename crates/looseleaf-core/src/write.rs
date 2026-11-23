@@ -29,6 +29,7 @@ pub fn render_scalar(text: &str) -> String {
             '\\' => out.push_str("\\\\"),
             '\n' => out.push_str("\\n"),
             '\t' => out.push_str("\\t"),
+            '\r' => out.push_str("\\r"),
             other => out.push(other),
         }
     }
@@ -50,10 +51,10 @@ fn plain_safe(text: &str) -> bool {
     if text.starts_with("- ") || text == "-" {
         return false;
     }
-    if text.contains(": ") || text.ends_with(':') || text.contains(" #") || text.contains('"') {
+    if text.contains(": ") || text.ends_with(':') || text.contains(" #") {
         return false;
     }
-    !text.contains('\n') && !text.contains('\t')
+    !text.contains('\n') && !text.contains('\t') && !text.contains('\r')
 }
 
 fn render_entry(lines: &mut Vec<String>, indent: usize, key: &str, value: &Value) {
@@ -63,10 +64,21 @@ fn render_entry(lines: &mut Vec<String>, indent: usize, key: &str, value: &Value
             lines.push(format!("{pad}{key}: {}", render_scalar(text)));
         }
         Value::List(items) => {
+            if items.is_empty() {
+                // An empty collection renders in flow form, because a
+                // bare key would reparse as an empty scalar and the
+                // value would be silently destroyed.
+                lines.push(format!("{pad}{key}: []"));
+                return;
+            }
             lines.push(format!("{pad}{key}:"));
             render_list(lines, indent + 2, items);
         }
         Value::Map(entries) => {
+            if entries.is_empty() {
+                lines.push(format!("{pad}{key}: {{}}"));
+                return;
+            }
             lines.push(format!("{pad}{key}:"));
             for (child_key, child_value) in entries {
                 render_entry(lines, indent + 2, child_key, child_value);
@@ -83,10 +95,18 @@ fn render_list(lines: &mut Vec<String>, indent: usize, items: &[Value]) {
                 lines.push(format!("{pad}- {}", render_scalar(text)));
             }
             Value::List(nested) => {
+                if nested.is_empty() {
+                    lines.push(format!("{pad}- []"));
+                    continue;
+                }
                 lines.push(format!("{pad}-"));
                 render_list(lines, indent + 2, nested);
             }
             Value::Map(entries) => {
+                if entries.is_empty() {
+                    lines.push(format!("{pad}- {{}}"));
+                    continue;
+                }
                 let mut first = true;
                 for (key, value) in entries {
                     if first {
@@ -96,13 +116,21 @@ fn render_list(lines: &mut Vec<String>, indent: usize, items: &[Value]) {
                                 lines.push(format!("{pad}- {key}: {}", render_scalar(text)));
                             }
                             Value::List(nested) => {
-                                lines.push(format!("{pad}- {key}:"));
-                                render_list(lines, indent + 4, nested);
+                                if nested.is_empty() {
+                                    lines.push(format!("{pad}- {key}: []"));
+                                } else {
+                                    lines.push(format!("{pad}- {key}:"));
+                                    render_list(lines, indent + 4, nested);
+                                }
                             }
                             Value::Map(nested_entries) => {
-                                lines.push(format!("{pad}- {key}:"));
-                                for (k, v) in nested_entries {
-                                    render_entry(lines, indent + 4, k, v);
+                                if nested_entries.is_empty() {
+                                    lines.push(format!("{pad}- {key}: {{}}"));
+                                } else {
+                                    lines.push(format!("{pad}- {key}:"));
+                                    for (k, v) in nested_entries {
+                                        render_entry(lines, indent + 4, k, v);
+                                    }
                                 }
                             }
                         }
@@ -110,9 +138,6 @@ fn render_list(lines: &mut Vec<String>, indent: usize, items: &[Value]) {
                     } else {
                         render_entry(lines, indent + 2, key, value);
                     }
-                }
-                if entries.is_empty() {
-                    lines.push(format!("{pad}-"));
                 }
             }
         }
@@ -175,13 +200,23 @@ pub fn upsert_frontmatter(text: &str, key: &str, value: &Value) -> Result<Upsert
     if document.frontmatter.is_none() {
         return Err("the document carries no frontmatter to edit".to_owned());
     }
-    let lines: Vec<&str> = text.lines().collect();
-    // The opening fence is line 0. Find the closing fence.
-    let Some(close) = lines
+    // Work on line segments that keep their own endings, so a CRLF
+    // document keeps CRLF endings everywhere, including the lines this
+    // edit does not touch. Splitting with str::lines and rejoining
+    // would silently rewrite every ending in the file.
+    let eol = if text.starts_with("---\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
+    let segments: Vec<&str> = text.split_inclusive('\n').collect();
+    let bare = bare_segment;
+    // The opening fence is segment 0. Find the closing fence.
+    let Some(close) = segments
         .iter()
         .enumerate()
         .skip(1)
-        .find(|(_, line)| line.trim_end_matches('\r') == "---")
+        .find(|(_, segment)| bare(segment).trim_end() == "---")
         .map(|(index, _)| index)
     else {
         return Err("frontmatter fence is never closed".to_owned());
@@ -189,8 +224,8 @@ pub fn upsert_frontmatter(text: &str, key: &str, value: &Value) -> Result<Upsert
     // Locate the existing entry for the key at indent zero.
     let mut start: Option<usize> = None;
     let mut end: usize = close;
-    for (index, line) in lines.iter().enumerate().take(close).skip(1) {
-        let line = *line;
+    for (index, segment) in segments.iter().enumerate().take(close).skip(1) {
+        let line = bare(segment);
         if line.is_empty() || line.starts_with(' ') {
             continue;
         }
@@ -204,43 +239,49 @@ pub fn upsert_frontmatter(text: &str, key: &str, value: &Value) -> Result<Upsert
             }
         }
     }
-    let rendered = render_top_entry(key, value);
-    let mut out_lines: Vec<String> = Vec::new();
+    let rendered: Vec<String> = render_top_entry(key, value)
+        .into_iter()
+        .map(|line| format!("{line}{eol}"))
+        .collect();
+    let mut out = String::with_capacity(text.len());
     if let Some(begin) = start {
-        for line in &lines[..begin] {
-            out_lines.push((*line).to_owned());
+        for segment in &segments[..begin] {
+            out.push_str(segment);
         }
-        out_lines.extend(rendered);
-        for line in &lines[end..] {
-            out_lines.push((*line).to_owned());
+        for line in &rendered {
+            out.push_str(line);
+        }
+        for segment in &segments[end..] {
+            out.push_str(segment);
         }
     } else {
-        for line in &lines[..close] {
-            out_lines.push((*line).to_owned());
+        for segment in &segments[..close] {
+            out.push_str(segment);
         }
-        out_lines.extend(rendered);
-        for line in &lines[close..] {
-            out_lines.push((*line).to_owned());
+        for line in &rendered {
+            out.push_str(line);
         }
-    }
-    let mut out = out_lines.join("\n");
-    if text.ends_with('\n') {
-        out.push('\n');
+        for segment in &segments[close..] {
+            out.push_str(segment);
+        }
     }
     let changed = out != text;
     Ok(Upsert { text: out, changed })
 }
 
+/// A line segment without its ending, for fence and entry detection
+/// that must work the same on LF and CRLF documents.
+fn bare_segment(segment: &str) -> &str {
+    segment.trim_end_matches(['\n', '\r'])
+}
+
 /// Split a top-level frontmatter line into key and remainder, when it
-/// is an entry line. Mirrors the parser's key rules.
+/// is an entry line. The key rule is the parser's own, shared through
+/// `is_valid_key`, so the reader and the writer cannot diverge.
 fn split_top_entry(line: &str) -> Option<(&str, &str)> {
     let colon = line.find(':')?;
     let key = &line[..colon];
-    if key.is_empty()
-        || !key
-            .chars()
-            .all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '_')
-    {
+    if !crate::frontmatter::is_valid_key(key) {
         return None;
     }
     Some((key, &line[colon + 1..]))
@@ -277,7 +318,50 @@ mod tests {
         assert_eq!(render_scalar("process:x"), "process:x");
         assert_eq!(render_scalar("has: colon"), "\"has: colon\"");
         assert_eq!(render_scalar(""), "\"\"");
-        assert_eq!(render_scalar("say \"hi\""), "\"say \\\"hi\\\"\"");
+        // An interior double quote parses back unchanged in the plain
+        // form, so D13's rule, quote only when the plain form would
+        // not parse back to the same text, leaves it plain.
+        assert_eq!(render_scalar("say \"hi\""), "say \"hi\"");
+        assert_eq!(render_scalar("a\rb"), "\"a\\rb\"");
+    }
+
+    #[test]
+    fn empty_collections_survive_a_round_trip() {
+        let parsed = fm("type: Person\ntags: []\ngenerated: {}\n");
+        let rendered = serialize_frontmatter(&parsed);
+        assert!(rendered.contains("tags: []"), "got:\n{rendered}");
+        assert!(rendered.contains("generated: {}"), "got:\n{rendered}");
+        let reparsed = fm(&rendered);
+        assert_eq!(parsed, reparsed);
+    }
+
+    #[test]
+    fn upsert_preserves_crlf_line_endings() {
+        let doc = "---\r\ntype: Person\r\ntitle: \"Alan\"\r\n---\r\n\r\n# Alan\r\n";
+        let value = Value::Scalar("Group".to_owned());
+        let result = upsert_frontmatter(doc, "type", &value).expect("upsert should work");
+        assert!(result.changed);
+        assert!(
+            result.text.contains("type: Group\r\n"),
+            "the edited line takes the document ending, got:\n{:?}",
+            result.text
+        );
+        assert!(
+            result.text.contains("title: \"Alan\"\r\n"),
+            "untouched lines keep their endings, got:\n{:?}",
+            result.text
+        );
+        assert!(!result.text.replace("\r\n", "").contains('\n'));
+        let noop = upsert_frontmatter(&result.text, "type", &value).expect("second upsert");
+        assert!(!noop.changed, "a same-value upsert on CRLF is a no-op");
+    }
+
+    #[test]
+    fn upsert_reports_its_error_cases() {
+        let value = Value::Scalar("x".to_owned());
+        assert!(upsert_frontmatter("# No frontmatter\n", "type", &value).is_err());
+        assert!(upsert_frontmatter("---\ntype: Person\n", "type", &value).is_err());
+        assert!(upsert_frontmatter("---\ntype: [unclosed\n---\n", "type", &value).is_err());
     }
 
     #[test]

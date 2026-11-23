@@ -9,15 +9,13 @@
 //! holds the supersession chain for the whole bundle.
 //!
 //! This crate holds the deterministic half of the system. It reads
-//! bundles and checks them against the profile. It never calls a
-//! model. The judgment half of looseleaf, the synthesis pass that
-//! decides what to promote and what to supersede, ships as a written
-//! contract that a host agent executes. See DECISIONS.md in the
-//! repository root and the profile in `docs/PROFILE.md`.
-//!
-//! The first build slice carries the bundle reader and the checker.
-//! Writing, index regeneration and registry regeneration land in
-//! later slices.
+//! bundles, checks them against the profile, and writes the parts of
+//! a bundle that are generated, today the claim registry, through a
+//! byte-stable writer that preserves whatever it does not own. It
+//! never calls a model. The judgment half of looseleaf, the synthesis
+//! pass that decides what to promote and what to supersede, ships as
+//! a written contract that a host agent executes. See DECISIONS.md in
+//! the repository root and the profile in `docs/PROFILE.md`.
 
 pub mod bundle;
 pub mod check;
@@ -40,15 +38,10 @@ pub const PROFILE_NAME: &str = "looseleaf";
 
 #[cfg(test)]
 mod tests {
-    use super::{OKF_VERSION, PROFILE_NAME};
+    use super::OKF_VERSION;
 
     #[test]
     fn profile_targets_okf_v03() {
         assert_eq!(OKF_VERSION, "0.3");
-    }
-
-    #[test]
-    fn profile_name_is_looseleaf() {
-        assert_eq!(PROFILE_NAME, "looseleaf");
     }
 }

@@ -15,3 +15,23 @@ x-looseleaf-rank: 1
 ## Facts
 
 - Runs the team standup.
+
+## History
+
+- Joined the team before the fixture was written.
+
+## The relationship
+
+- Teammate of the bundle's owner.
+
+## In common
+
+- A daily standup.
+
+## Open threads
+
+- None in the fixture.
+
+## Strengthening
+
+- Keep the standup time current.

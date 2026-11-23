@@ -174,3 +174,42 @@ as an input rather than reading a clock, so the same bundle state
 with the same stamp renders byte-identically, and the write lands
 through a sibling temporary file renamed over the target, so a failed
 write never truncates the registry that was there.
+
+## D14. Checkpoint fix pass dispositions
+
+Added 2026-11-23 with the Phase 2 opening fix pass, which closed the
+findings of the three checkpoint reviews over the checker and writer
+slices. Most findings were plain repairs. The ones that are decisions
+rather than repairs are recorded here.
+
+- The layout rules the profile states as rules are errors, including
+  a layer that carries no index, a daily or curated layer that
+  carries no log, and a daily file whose name is not a calendar date.
+  The warnings that remain are the advisory set. A directory that is
+  not a profile layer, a Markdown file at the bundle root, a person
+  body missing part of its six section shape, a log whose sections
+  run out of newest first order, an extension key without the prefix,
+  a concept whose status and replacement disagree, a supersession
+  fork, and a symbolic link the walker did not follow.
+- The claim kind and confidence vocabularies in PROFILE.md section 3
+  are closed. A tag outside them is an error, not a new kind by use.
+- The nesting rule in PROFILE.md section 5 is structural. Block
+  collections nest one level under a key, a sequence item may carry
+  one mapping, and the values inside those collections stay inline.
+  Flow collections nest at most three deep, a cap that exists so a
+  crafted value cannot recurse the parser off its stack.
+- D13 stands as written. The one place the writer had drifted past
+  it, quoting any scalar that contains a double quote, was brought
+  back into line, because an interior double quote parses back
+  unchanged in the plain form.
+- The walker follows no symbolic links and skips only `.git`
+  directories. Everything else in the tree is read, a file it cannot
+  read is reported as unreadable rather than as empty, and a skipped
+  link is reported rather than silent.
+- The registry check compares identity sets in both directions and
+  reads the withheld presentation in the rendered format, because a
+  registry that names a claim no layer carries is as stale as one
+  that drops a claim the layers carry.
+- A supersession fork is a warning and a supersession cycle is an
+  error. The registry renderer names the first claimant in bundle
+  order while a fork is resolved, so rendering stays deterministic.

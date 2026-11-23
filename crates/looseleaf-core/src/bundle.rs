@@ -113,6 +113,10 @@ pub struct ConceptFile {
     pub fm_error: Option<String>,
     /// The document body.
     pub body: String,
+    /// True when the file could not be read as UTF-8 text at all, so
+    /// the checker reports an unreadable file rather than mistaking
+    /// it for an empty document.
+    pub read_error: bool,
     /// Claim blocks scanned from the body. Only the daily and curated
     /// layers carry claim blocks under the convention.
     pub claims: Vec<Claim>,
@@ -145,6 +149,10 @@ pub struct Bundle {
     pub files: Vec<ConceptFile>,
     /// The top-level directory names found, sorted.
     pub top_dirs: Vec<String>,
+    /// Bundle-relative paths the walker met as symbolic links and did
+    /// not follow, sorted. The checker reports each one, so a link
+    /// can never make part of a bundle silently unchecked.
+    pub skipped_links: Vec<String>,
 }
 
 impl Bundle {
@@ -161,7 +169,15 @@ impl Bundle {
     }
 }
 
-fn collect_markdown(dir: &Path, out: &mut Vec<PathBuf>) {
+/// The deepest directory nesting the walker will descend. A memory
+/// bundle is a shallow tree of layers, so the cap only ever bites on
+/// a pathological tree, where it keeps the walk finite.
+const MAX_WALK_DEPTH: usize = 24;
+
+fn collect_markdown(dir: &Path, depth: usize, out: &mut Vec<PathBuf>, skipped: &mut Vec<PathBuf>) {
+    if depth > MAX_WALK_DEPTH {
+        return;
+    }
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
@@ -173,30 +189,59 @@ fn collect_markdown(dir: &Path, out: &mut Vec<PathBuf>) {
         let name = path
             .file_name()
             .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-        if name.starts_with('.') {
+        let Ok(metadata) = fs::symlink_metadata(&path) else {
+            continue;
+        };
+        if metadata.file_type().is_symlink() {
+            // Links are never followed. A linked directory could loop
+            // back into the bundle or escape it, and a linked file
+            // would ingest content from outside the bundle under a
+            // bundle path. The link is recorded so the checker can
+            // report the hole instead of leaving it silent.
+            skipped.push(path);
             continue;
         }
-        if path.is_dir() {
-            if name != "target" {
-                collect_markdown(&path, out);
+        if metadata.is_dir() {
+            if name != ".git" {
+                collect_markdown(&path, depth + 1, out, skipped);
             }
-        } else if path.extension().is_some_and(|ext| ext == "md") {
+        } else if path
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("md"))
+        {
             out.push(path);
         }
     }
+}
+
+fn rel_string(root: &Path, path: &Path) -> Option<String> {
+    let relative = path.strip_prefix(root).ok()?;
+    Some(
+        relative
+            .components()
+            .map(|part| part.as_os_str().to_string_lossy().into_owned())
+            .collect::<Vec<_>>()
+            .join("/"),
+    )
 }
 
 /// Read a bundle from a directory on disk.
 #[must_use]
 pub fn read_bundle(root: &Path) -> Bundle {
     let mut paths = Vec::new();
-    collect_markdown(root, &mut paths);
+    let mut skipped = Vec::new();
+    collect_markdown(root, 0, &mut paths, &mut skipped);
+    let mut skipped_links: Vec<String> = skipped
+        .iter()
+        .filter_map(|path| rel_string(root, path))
+        .collect();
+    skipped_links.sort();
     let mut top_dirs: Vec<String> = Vec::new();
     if let Ok(entries) = fs::read_dir(root) {
         for entry in entries.flatten() {
             if entry.path().is_dir() {
                 let name = entry.file_name().to_string_lossy().into_owned();
-                if !name.starts_with('.') {
+                if name != ".git" {
                     top_dirs.push(name);
                 }
             }
@@ -227,9 +272,13 @@ pub fn read_bundle(root: &Path) -> Bundle {
         } else {
             Layer::Root
         };
-        let reserved = file_name == "index.md" || file_name == "log.md";
+        let reserved =
+            file_name.eq_ignore_ascii_case("index.md") || file_name.eq_ignore_ascii_case("log.md");
         let is_registry = rel_path == "claims.md";
-        let text = fs::read_to_string(&path).unwrap_or_default();
+        let (text, read_error) = match fs::read_to_string(&path) {
+            Ok(text) => (text, false),
+            Err(_) => (String::new(), true),
+        };
         let document = parse_document(&text);
         let claims = if matches!(layer, Layer::Daily | Layer::Curated) && !reserved {
             scan_claims(&document.body)
@@ -244,6 +293,7 @@ pub fn read_bundle(root: &Path) -> Bundle {
             frontmatter: document.frontmatter,
             fm_error: document.parse_error,
             body: document.body,
+            read_error,
             claims,
         });
     }
@@ -252,5 +302,6 @@ pub fn read_bundle(root: &Path) -> Bundle {
         root: root.to_path_buf(),
         files,
         top_dirs,
+        skipped_links,
     }
 }

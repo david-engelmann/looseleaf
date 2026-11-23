@@ -5,23 +5,32 @@
 //! subcommand checks a bundle directory against the profile in
 //! `docs/PROFILE.md` and prints one line per finding, exiting 1 when
 //! any finding is an error and 0 otherwise. The `write-registry`
-//! subcommand regenerates the bundle's claim registry.
+//! subcommand regenerates the bundle's claim registry. Arguments are
+//! strict. Anything the tool does not recognise is a usage error with
+//! exit code 2, never something silently ignored, and a non-UTF-8
+//! argument is reported rather than panicking, because a bundle path
+//! with non-UTF-8 bytes is legal on the systems looseleaf runs on.
 
+use std::ffi::OsString;
 use std::path::Path;
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    match args.first().map(String::as_str) {
-        None => {
-            println!("looseleaf {}", env!("CARGO_PKG_VERSION"));
-            println!("OKF profile version {}", looseleaf_core::OKF_VERSION);
-            println!("Run looseleaf check <bundle> to check a bundle against the profile.");
-            ExitCode::SUCCESS
-        }
-        Some("check") => run_check(&args[1..]),
-        Some("write-registry") => run_write_registry(&args[1..]),
-        Some(other) => {
+    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    let Some(first) = args.first() else {
+        println!("looseleaf {}", env!("CARGO_PKG_VERSION"));
+        println!("OKF profile version {}", looseleaf_core::OKF_VERSION);
+        println!("Run looseleaf check <bundle> to check a bundle against the profile.");
+        return ExitCode::SUCCESS;
+    };
+    let Some(command) = first.to_str() else {
+        eprintln!("the subcommand is not valid UTF-8");
+        return ExitCode::from(2);
+    };
+    match command {
+        "check" => run_check(&args[1..]),
+        "write-registry" => run_write_registry(&args[1..]),
+        other => {
             eprintln!("unknown subcommand {other}");
             eprintln!(
                 "usage: looseleaf [check <bundle>] [write-registry <bundle> --at <timestamp>]"
@@ -31,12 +40,12 @@ fn main() -> ExitCode {
     }
 }
 
-fn run_check(args: &[String]) -> ExitCode {
-    let Some(path) = args.first() else {
+fn run_check(args: &[OsString]) -> ExitCode {
+    if args.len() != 1 {
         eprintln!("usage: looseleaf check <bundle>");
         return ExitCode::from(2);
-    };
-    let report = looseleaf_core::check_bundle(Path::new(path));
+    }
+    let report = looseleaf_core::check_bundle(Path::new(&args[0]));
     for finding in &report.findings {
         println!(
             "{} {} {}: {}",
@@ -59,20 +68,16 @@ fn run_check(args: &[String]) -> ExitCode {
     }
 }
 
-fn run_write_registry(args: &[String]) -> ExitCode {
-    let Some(path) = args.first() else {
+fn run_write_registry(args: &[OsString]) -> ExitCode {
+    if args.len() != 3 || args[1].to_str() != Some("--at") {
         eprintln!("usage: looseleaf write-registry <bundle> --at <timestamp>");
         return ExitCode::from(2);
-    };
-    let at = args
-        .windows(2)
-        .find(|pair| pair[0] == "--at")
-        .map(|pair| pair[1].clone());
-    let Some(at) = at else {
-        eprintln!("write-registry needs --at <timestamp>, the stamp for the generated entry");
+    }
+    let Some(at) = args[2].to_str() else {
+        eprintln!("the --at timestamp is not valid UTF-8");
         return ExitCode::from(2);
     };
-    match looseleaf_core::registry::regenerate_registry(Path::new(path), &at) {
+    match looseleaf_core::registry::regenerate_registry(Path::new(&args[0]), at) {
         Ok(true) => {
             println!("registry regenerated");
             ExitCode::SUCCESS

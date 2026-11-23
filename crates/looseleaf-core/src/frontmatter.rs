@@ -3,8 +3,11 @@
 //! The subset is defined in `docs/PROFILE.md` section 5. It covers
 //! top-level `key: value` entries, plain and quoted scalars, flow
 //! mappings and sequences on one line, block sequences of scalars or
-//! mappings, and block mappings nested one level under a key. Anything
-//! outside the subset is rejected with an error rather than guessed at.
+//! mappings, and block mappings under a key. Block collections nest
+//! at most one level under a key, plus one mapping level inside a
+//! sequence item, and the values inside those nested collections
+//! stay inline. Anything outside the subset is rejected with an
+//! error rather than guessed at.
 
 /// A value in the frontmatter subset. Scalars keep their text form,
 /// because the profile checks text, not YAML typing.
@@ -94,6 +97,7 @@ pub struct Document {
 /// frontmatter block when present.
 #[must_use]
 pub fn parse_document(text: &str) -> Document {
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
     let Some(rest) = strip_opening_fence(text) else {
         return Document {
             frontmatter: None,
@@ -107,7 +111,7 @@ pub fn parse_document(text: &str) -> Document {
     for line in rest.split_inclusive('\n') {
         let trimmed = line.trim_end_matches(['\n', '\r']);
         offset += line.len();
-        if trimmed == "---" {
+        if trimmed.trim_end() == "---" {
             body_start = Some(offset);
             break;
         }
@@ -156,6 +160,7 @@ pub fn parse_scalar(raw: &str) -> String {
                 match chars.next() {
                     Some('n') => out.push('\n'),
                     Some('t') => out.push('\t'),
+                    Some('r') => out.push('\r'),
                     Some(other) => out.push(other),
                     None => out.push('\\'),
                 }
@@ -181,12 +186,28 @@ fn is_key_char(ch: char) -> bool {
     ch.is_ascii_alphanumeric() || ch == '-' || ch == '_'
 }
 
+/// Whether a key is legal in the subset, bare words, digits, `-` and
+/// `_`. Shared with the writer, so the reader and the writer can never
+/// disagree about what makes a key.
+pub(crate) fn is_valid_key(key: &str) -> bool {
+    !key.is_empty() && key.chars().all(is_key_char)
+}
+
+/// Reject a duplicate key in one mapping, wherever the mapping was
+/// assembled, in one place so every assembly path enforces it.
+fn check_no_duplicate(entries: &[(String, Value)], key: &str) -> Result<(), String> {
+    if entries.iter().any(|(name, _)| name == key) {
+        return Err(format!("duplicate key {key} in one mapping"));
+    }
+    Ok(())
+}
+
 /// Split an entry line into its key and the inline remainder, when the
 /// line is a mapping entry in the subset.
 fn split_entry(content: &str) -> Option<(&str, &str)> {
     let colon = content.find(':')?;
     let key = &content[..colon];
-    if key.is_empty() || !key.chars().all(is_key_char) {
+    if !is_valid_key(key) {
         return None;
     }
     let rest = &content[colon + 1..];
@@ -217,7 +238,7 @@ fn parse_frontmatter(lines: &[&str]) -> Result<Frontmatter, String> {
         });
     }
     let mut pos = 0usize;
-    let entries = parse_map(&logical, &mut pos, 0, 1)?;
+    let entries = parse_map(&logical, &mut pos, 0, true)?;
     if pos != logical.len() {
         return Err(format!(
             "line {} does not fit the mapping above it",
@@ -227,17 +248,17 @@ fn parse_frontmatter(lines: &[&str]) -> Result<Frontmatter, String> {
     Ok(Frontmatter { entries })
 }
 
-const MAX_DEPTH: usize = 4;
-
+/// Parse a block mapping at one indent. `block_values` is true only
+/// for the top-level mapping, whose entries may hold the one level of
+/// block collection the subset allows. Inside any nested collection
+/// the values stay inline, which is the subset's nesting rule stated
+/// in docs/PROFILE.md section 5.
 fn parse_map(
     lines: &[Line],
     pos: &mut usize,
     indent: usize,
-    depth: usize,
+    block_values: bool,
 ) -> Result<Vec<(String, Value)>, String> {
-    if depth > MAX_DEPTH {
-        return Err("frontmatter nests deeper than the subset allows".to_owned());
-    }
     let mut entries: Vec<(String, Value)> = Vec::new();
     while *pos < lines.len() {
         let line = &lines[*pos];
@@ -253,15 +274,13 @@ fn parse_map(
         let Some((key, rest)) = split_entry(&line.content) else {
             return Err(format!("line {} is not a key and value entry", line.number));
         };
-        if entries.iter().any(|(name, _)| name == key) {
-            return Err(format!("duplicate key {key} in one mapping"));
-        }
+        check_no_duplicate(&entries, key)?;
         let key = key.to_owned();
         *pos += 1;
         let value = if rest.is_empty() {
-            parse_block_value(lines, pos, indent, depth)?
+            parse_block_value(lines, pos, indent, block_values)?
         } else {
-            parse_flow(rest).map_err(|message| format!("line {} {message}", line.number))?
+            parse_flow(rest, 0).map_err(|message| format!("line {} {message}", line.number))?
         };
         entries.push((key, value));
     }
@@ -272,29 +291,27 @@ fn parse_block_value(
     lines: &[Line],
     pos: &mut usize,
     parent_indent: usize,
-    depth: usize,
+    allowed: bool,
 ) -> Result<Value, String> {
     if *pos >= lines.len() || lines[*pos].indent <= parent_indent {
         return Ok(Value::Scalar(String::new()));
     }
+    if !allowed {
+        return Err(format!(
+            "line {} nests a block collection deeper than the subset allows",
+            lines[*pos].number
+        ));
+    }
     let child_indent = lines[*pos].indent;
     if lines[*pos].content.starts_with("- ") || lines[*pos].content == "-" {
-        parse_list(lines, pos, child_indent, depth + 1)
+        parse_list(lines, pos, child_indent)
     } else {
-        let entries = parse_map(lines, pos, child_indent, depth + 1)?;
+        let entries = parse_map(lines, pos, child_indent, false)?;
         Ok(Value::Map(entries))
     }
 }
 
-fn parse_list(
-    lines: &[Line],
-    pos: &mut usize,
-    indent: usize,
-    depth: usize,
-) -> Result<Value, String> {
-    if depth > MAX_DEPTH {
-        return Err("frontmatter nests deeper than the subset allows".to_owned());
-    }
+fn parse_list(lines: &[Line], pos: &mut usize, indent: usize) -> Result<Value, String> {
     let mut items: Vec<Value> = Vec::new();
     while *pos < lines.len() {
         let line = &lines[*pos];
@@ -314,24 +331,36 @@ fn parse_list(
             let mut entries: Vec<(String, Value)> = Vec::new();
             let key = key.to_owned();
             let first = if rest.is_empty() {
-                parse_block_value(lines, pos, indent + 2, depth)?
+                parse_block_value(lines, pos, indent + 2, false)?
             } else {
-                parse_flow(rest).map_err(|m| format!("line {item_number} {m}"))?
+                parse_flow(rest, 0).map_err(|m| format!("line {item_number} {m}"))?
             };
             entries.push((key, first));
-            let more = parse_map(lines, pos, indent + 2, depth + 1)?;
-            entries.extend(more);
+            let more = parse_map(lines, pos, indent + 2, false)?;
+            for (name, value) in more {
+                check_no_duplicate(&entries, &name)?;
+                entries.push((name, value));
+            }
             items.push(Value::Map(entries));
         } else {
-            let value = parse_flow(&item_text).map_err(|m| format!("line {item_number} {m}"))?;
+            let value = parse_flow(&item_text, 0).map_err(|m| format!("line {item_number} {m}"))?;
             items.push(value);
         }
     }
     Ok(Value::List(items))
 }
 
+/// The deepest flow nesting the parser will follow. Flow forms in
+/// the profile are flat, a mapping of scalars or a sequence of
+/// scalars or mappings, and the cap exists so a crafted value cannot
+/// recurse the parser off its stack.
+const MAX_FLOW_DEPTH: usize = 3;
+
 /// Parse an inline value, a flow mapping, a flow sequence or a scalar.
-fn parse_flow(text: &str) -> Result<Value, String> {
+fn parse_flow(text: &str, depth: usize) -> Result<Value, String> {
+    if depth > MAX_FLOW_DEPTH {
+        return Err("nests flow collections deeper than the subset allows".to_owned());
+    }
     let text = text.trim();
     if text.starts_with('{') {
         if !text.ends_with('}') {
@@ -349,10 +378,8 @@ fn parse_flow(text: &str) -> Result<Value, String> {
                     "has a flow entry that is not a key and value, {part}"
                 ));
             };
-            if entries.iter().any(|(name, _)| name == key) {
-                return Err(format!("repeats the flow key {key}"));
-            }
-            entries.push((key.to_owned(), parse_flow(rest)?));
+            check_no_duplicate(&entries, key)?;
+            entries.push((key.to_owned(), parse_flow(rest, depth + 1)?));
         }
         return Ok(Value::Map(entries));
     }
@@ -365,10 +392,16 @@ fn parse_flow(text: &str) -> Result<Value, String> {
         for part in split_top_level(inner, ',') {
             let part = part.trim();
             if !part.is_empty() {
-                items.push(parse_flow(part)?);
+                items.push(parse_flow(part, depth + 1)?);
             }
         }
         return Ok(Value::List(items));
+    }
+    if text.starts_with(['&', '*', '|', '>']) {
+        return Err(
+            "begins with an anchor, alias or block scalar indicator, which is outside the subset"
+                .to_owned(),
+        );
     }
     Ok(Value::Scalar(parse_scalar(text)))
 }
@@ -473,5 +506,42 @@ mod tests {
         assert_eq!(parse_scalar("\"a \\\"b\\\" c\""), "a \"b\" c");
         assert_eq!(parse_scalar("'it''s'"), "it's");
         assert_eq!(parse_scalar("plain text"), "plain text");
+        assert_eq!(parse_scalar("\"a\\rb\""), "a\rb");
+    }
+
+    #[test]
+    fn rejects_deeply_nested_flow_values() {
+        let text = "---\ntype: Person\nx-deep: [[[[[1]]]]]\n---\n";
+        let doc = parse_document(text);
+        assert!(doc.parse_error.is_some());
+    }
+
+    #[test]
+    fn rejects_a_block_collection_inside_a_list_item_mapping() {
+        let text = "---\ntype: Person\nsources:\n  - id: one\n    resource:\n      - nested\n---\n";
+        let doc = parse_document(text);
+        assert!(doc.parse_error.is_some());
+    }
+
+    #[test]
+    fn rejects_a_duplicate_key_across_the_list_item_seam() {
+        let text = "---\ntype: Person\nsources:\n  - id: one\n    id: two\n---\n";
+        let doc = parse_document(text);
+        assert!(doc.parse_error.is_some());
+    }
+
+    #[test]
+    fn rejects_anchor_and_block_scalar_indicators() {
+        let anchored = parse_document("---\ntype: Person\ntitle: &x Anchored\n---\n");
+        assert!(anchored.parse_error.is_some());
+        let blocked = parse_document("---\ntype: Person\ntitle: |\n---\n");
+        assert!(blocked.parse_error.is_some());
+    }
+
+    #[test]
+    fn a_byte_order_mark_does_not_hide_the_frontmatter() {
+        let doc = parse_document("\u{feff}---\ntype: Person\n---\nBody.\n");
+        let fm = doc.frontmatter.expect("frontmatter should parse");
+        assert_eq!(fm.get_scalar("type"), Some("Person"));
     }
 }

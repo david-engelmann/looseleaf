@@ -41,9 +41,15 @@ Content lives in layer directories, each mapped to one concept type.
 Every directory carries an `index.md`. The `daily/` and `curated/`
 directories also carry a `log.md`. Files named `index.md` and `log.md`
 are reserved files under the standard and are never concepts. Daily Log
-files are named by ISO date, `YYYY-MM-DD.md`. The daily layer is
-append-only. Neither the tool nor a synthesis pass ever edits a daily
-file.
+files are named by ISO date, `YYYY-MM-DD.md`, and the name must be a
+real calendar date. The daily layer is append-only. Neither the tool
+nor a synthesis pass ever edits a daily file.
+
+A Person body keeps six sections, `## Facts`, `## History`,
+`## The relationship`, `## In common`, `## Open threads` and
+`## Strengthening`, the shape the source system uses, so a reader
+finds the same anatomy on every person file. A person body missing
+part of the shape is flagged as a warning.
 
 ## 2. Frontmatter
 
@@ -70,8 +76,9 @@ Further keys carry fixed meanings.
   path resolving inside the bundle or an absolute URL. Message-level
   provenance never goes in `sources`, because a message id does not
   resolve for a consumer. Message provenance lives in claim blocks.
-- `verified` is written only when a verification actually happened, with
-  the actor who did it. A machine actor never stamps a human actor.
+- `verified` is written only when a verification actually happened, as
+  a mapping with `by` and `at`, the actor who did it and when. A
+  machine actor never stamps a human actor.
 - `stale_after` is written only under the staleness rules in the
   synthesis contract. Inventing a review date is a contract breach.
 - `status` and `superseded_by` are used exactly as the standard defines
@@ -112,6 +119,11 @@ sub-items.
   replaces, written on the new claim at birth. The reverse link is
   written only by the synthesis pass, into the curated layer and the
   claim registry, never into a daily file.
+- The `superseded-by` sub-item is that reverse link. It names the
+  claim that replaced this one. It appears only on the curated copy
+  of a superseded claim, written by the synthesis pass when it
+  promotes the replacement, and the claim it names must in turn name
+  this claim in its own `supersedes` sub-item.
 
 The chain rule is the whole convention. A claim is never edited in place
 once a later daily log exists. Correction is a new claim that
@@ -121,7 +133,11 @@ promoted claim whose wording differs from its daily original is drift,
 because a wording change is a new claim, not a promotion. The curated
 concept that holds a superseded claim carries a superseded claims
 section listing the old text, the old identity, the replacing identity,
-the date and a one-line reason.
+the date and a one-line reason. The section sits under a
+`## Superseded claims` heading, and each entry is one list item of the
+form `- ` then the old identity, the old claim text, the words
+`Replaced by`, the replacing identity, the word `on`, the date, a
+comma and the one-line reason.
 
 ## 4. The claim registry
 
@@ -160,7 +176,9 @@ parse exactly and to write byte-stably.
   indent. An item is a scalar, or a mapping whose first entry follows
   the `- ` and whose remaining entries align under it.
 - A block mapping under a key, entries at a deeper indent, one level
-  deep.
+  deep. Values inside a block mapping and inside a block sequence
+  item's mapping stay inline, as scalars or as flow forms on the
+  entry line, so block collections never nest inside one another.
 - Anything else, anchors, block scalars, tabs, deeper nesting, is
   outside the subset. A looseleaf reader rejects a file whose
   frontmatter falls outside the subset and reports it, rather than

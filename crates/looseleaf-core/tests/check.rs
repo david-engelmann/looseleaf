@@ -43,6 +43,16 @@ fn mutate(dir: &Path, rel: &str, edit: impl Fn(&str) -> String) {
     fs::write(&path, edit(&text)).expect("write mutated fixture");
 }
 
+fn remove(dir: &Path, rel: &str) {
+    fs::remove_file(dir.join(rel)).expect("remove fixture file");
+}
+
+fn write_file(dir: &Path, rel: &str, text: &str) {
+    let path = dir.join(rel);
+    fs::create_dir_all(path.parent().expect("fixture parent")).expect("create fixture dir");
+    fs::write(&path, text).expect("write fixture file");
+}
+
 fn codes(dir: &Path) -> Vec<&'static str> {
     check_bundle(dir)
         .findings
@@ -123,4 +133,378 @@ fn unresolved_source_is_caught() {
     });
     let found = codes(&dir);
     assert!(found.contains(&"SRC_UNRESOLVED"), "got {found:?}");
+}
+
+#[test]
+fn source_escaping_the_bundle_is_caught() {
+    let dir = defect_copy("source-escape");
+    mutate(&dir, "people/ada.md", |text| {
+        text.replace("resource: daily/2026-11-01.md", "resource: /etc/passwd")
+    });
+    let found = codes(&dir);
+    assert!(found.contains(&"SRC_UNRESOLVED"), "got {found:?}");
+    let dir = defect_copy("source-climb");
+    mutate(&dir, "people/ada.md", |text| {
+        text.replace("resource: daily/2026-11-01.md", "resource: ../../MEMORY.md")
+    });
+    let found = codes(&dir);
+    assert!(found.contains(&"SRC_UNRESOLVED"), "got {found:?}");
+}
+
+#[test]
+fn source_entry_without_a_resource_is_caught() {
+    let dir = defect_copy("source-no-resource");
+    mutate(&dir, "people/ada.md", |text| {
+        text.replace("    resource: daily/2026-11-01.md\n", "")
+    });
+    let found = codes(&dir);
+    assert!(found.contains(&"SRC_UNRESOLVED"), "got {found:?}");
+}
+
+#[test]
+fn missing_root_files_are_caught() {
+    let dir = defect_copy("no-root-index");
+    remove(&dir, "index.md");
+    assert!(codes(&dir).contains(&"LAYOUT_ROOT_INDEX"));
+    let dir = defect_copy("no-root-log");
+    remove(&dir, "log.md");
+    assert!(codes(&dir).contains(&"LAYOUT_ROOT_LOG"));
+}
+
+#[test]
+fn missing_layer_files_are_caught() {
+    let dir = defect_copy("no-layer-index");
+    remove(&dir, "people/index.md");
+    assert!(codes(&dir).contains(&"LAYOUT_DIR_INDEX"));
+    let dir = defect_copy("no-layer-log");
+    remove(&dir, "daily/log.md");
+    assert!(codes(&dir).contains(&"LAYOUT_DIR_LOG"));
+}
+
+#[test]
+fn unknown_directory_and_stray_root_file_are_caught() {
+    let dir = defect_copy("unknown-dir");
+    fs::create_dir(dir.join("notes")).expect("create stray dir");
+    assert!(codes(&dir).contains(&"LAYOUT_UNKNOWN_DIR"));
+    let dir = defect_copy("root-file");
+    write_file(&dir, "stray.md", "# Stray\n");
+    assert!(codes(&dir).contains(&"LAYOUT_ROOT_FILE"));
+}
+
+#[test]
+fn root_index_fields_are_caught() {
+    let dir = defect_copy("index-version");
+    mutate(&dir, "index.md", |text| {
+        text.replace("okf_version: \"0.3\"", "okf_version: \"0.2\"")
+    });
+    assert!(codes(&dir).contains(&"INDEX_VERSION"));
+    let dir = defect_copy("index-field");
+    mutate(&dir, "index.md", |text| {
+        text.replace("license: MIT OR Apache-2.0\n", "")
+    });
+    assert!(codes(&dir).contains(&"INDEX_FIELD"));
+}
+
+#[test]
+fn concept_frontmatter_defects_are_caught() {
+    let dir = defect_copy("fm-parse");
+    mutate(&dir, "people/ada.md", |text| {
+        text.replace("type: Person", "type: [Person")
+    });
+    assert!(codes(&dir).contains(&"FM_PARSE"));
+    let dir = defect_copy("fm-missing");
+    write_file(&dir, "people/ada.md", "# Ada\n\nNo frontmatter.\n");
+    assert!(codes(&dir).contains(&"FM_MISSING"));
+    let dir = defect_copy("fm-type-mismatch");
+    mutate(&dir, "people/ada.md", |text| {
+        text.replace("type: Person", "type: Group")
+    });
+    assert!(codes(&dir).contains(&"FM_TYPE_MISMATCH"));
+    let dir = defect_copy("fm-title");
+    mutate(&dir, "people/ada.md", |text| {
+        text.replace("title: \"Ada\"\n", "")
+    });
+    assert!(codes(&dir).contains(&"FM_TITLE"));
+    let dir = defect_copy("fm-description");
+    mutate(&dir, "curated/standing-facts.md", |text| {
+        text.replace(
+            "description: \"Facts that currently hold, promoted from the daily logs.\"\n",
+            "",
+        )
+    });
+    assert!(codes(&dir).contains(&"FM_DESCRIPTION"));
+    let dir = defect_copy("fm-generated");
+    mutate(&dir, "people/ada.md", |text| {
+        text.replace(
+            "generated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\n",
+            "",
+        )
+    });
+    assert!(codes(&dir).contains(&"FM_GENERATED"));
+}
+
+#[test]
+fn extension_key_without_the_prefix_is_caught() {
+    let dir = defect_copy("fm-extension");
+    mutate(&dir, "people/ada.md", |text| {
+        text.replace(
+            "x-looseleaf-rank: 1\n",
+            "x-looseleaf-rank: 1\nx-daybook-rank: 2\n",
+        )
+    });
+    assert!(codes(&dir).contains(&"FM_EXTENSION_PREFIX"));
+}
+
+#[test]
+fn verified_with_a_bad_shape_is_caught() {
+    let dir = defect_copy("fm-verified");
+    mutate(&dir, "people/ada.md", |text| {
+        text.replace(
+            "x-looseleaf-rank: 1\n",
+            "x-looseleaf-rank: 1\nverified: yes\n",
+        )
+    });
+    assert!(codes(&dir).contains(&"FM_VERIFIED"));
+}
+
+#[test]
+fn concept_supersession_defects_are_caught() {
+    let dir = defect_copy("fm-superseded-by");
+    mutate(&dir, "people/ada.md", |text| {
+        text.replace(
+            "x-looseleaf-rank: 1\n",
+            "x-looseleaf-rank: 1\nsuperseded_by: people/nobody.md\n",
+        )
+    });
+    assert!(codes(&dir).contains(&"FM_SUPERSEDED_BY"));
+    let dir = defect_copy("fm-status");
+    mutate(&dir, "people/ada.md", |text| {
+        text.replace(
+            "x-looseleaf-rank: 1\n",
+            "x-looseleaf-rank: 1\nstatus: deprecated\n",
+        )
+    });
+    assert!(codes(&dir).contains(&"FM_STATUS"));
+}
+
+#[test]
+fn missing_sources_are_caught() {
+    let dir = defect_copy("src-required");
+    mutate(&dir, "people/ada.md", |text| {
+        text.replace(
+            "sources:\n  - id: day-one\n    resource: daily/2026-11-01.md\n    title: Daily log for 2026-11-01\n",
+            "",
+        )
+    });
+    assert!(codes(&dir).contains(&"SRC_REQUIRED"));
+}
+
+#[test]
+fn claim_shape_defects_are_caught() {
+    let dir = defect_copy("claim-no-id");
+    mutate(&dir, "daily/2026-11-01.md", |text| {
+        format!(
+            "{text}\n- [fact|high] A claim with no identity.\n  - quote: \"no id\"\n  - sources: message:m-9\n"
+        )
+    });
+    assert!(codes(&dir).contains(&"CLAIM_NO_ID"));
+    let dir = defect_copy("claim-no-quote");
+    mutate(&dir, "daily/2026-11-01.md", |text| {
+        format!(
+            "{text}\n- [fact|high] A claim with no quote.\n  - claim: 44444444444444444444444444444444\n  - sources: message:m-9\n"
+        )
+    });
+    assert!(codes(&dir).contains(&"CLAIM_NO_QUOTE"));
+    let dir = defect_copy("claim-kind");
+    mutate(&dir, "daily/2026-11-01.md", |text| {
+        text.replace("- [fact|high]", "- [rumour|high]")
+    });
+    assert!(codes(&dir).contains(&"CLAIM_KIND"));
+    let dir = defect_copy("claim-confidence");
+    mutate(&dir, "daily/2026-11-01.md", |text| {
+        text.replace("- [fact|high]", "- [fact|certain]")
+    });
+    assert!(codes(&dir).contains(&"CLAIM_CONFIDENCE"));
+    let dir = defect_copy("claim-dup-subitem");
+    mutate(&dir, "daily/2026-11-01.md", |text| {
+        format!(
+            "{text}\n- [fact|high] A block with two identities.\n  - claim: 44444444444444444444444444444444\n  - claim: 55555555555555555555555555555555\n  - quote: \"twice\"\n  - sources: message:m-9\n"
+        )
+    });
+    assert!(codes(&dir).contains(&"CLAIM_DUP_SUBITEM"));
+}
+
+#[test]
+fn reverse_link_defects_are_caught() {
+    let dir = defect_copy("reverse-in-daily");
+    mutate(&dir, "daily/2026-11-01.md", |text| {
+        text.replace(
+            "  - sources: message:m-1\n",
+            "  - sources: message:m-1\n  - superseded-by: 33333333333333333333333333333333\n",
+        )
+    });
+    assert!(codes(&dir).contains(&"CLAIM_REVERSE_IN_DAILY"));
+    let dir = defect_copy("reverse-dangling");
+    mutate(&dir, "curated/standing-facts.md", |text| {
+        text.replace(
+            "  - supersedes: 11111111111111111111111111111111\n",
+            "  - supersedes: 11111111111111111111111111111111\n  - superseded-by: 22222222222222222222222222222222\n",
+        )
+    });
+    assert!(codes(&dir).contains(&"CLAIM_REVERSE_DANGLING"));
+}
+
+#[test]
+fn supersession_chain_defects_are_caught() {
+    let dir = defect_copy("supersede-self");
+    mutate(&dir, "daily/2026-11-02.md", |text| {
+        text.replace(
+            "supersedes: 11111111111111111111111111111111",
+            "supersedes: 33333333333333333333333333333333",
+        )
+    });
+    assert!(codes(&dir).contains(&"CLAIM_SUPERSEDES_SELF"));
+    let dir = defect_copy("supersede-cycle");
+    mutate(&dir, "daily/2026-11-01.md", |text| {
+        text.replace(
+            "  - sources: message:m-1\n",
+            "  - sources: message:m-1\n  - supersedes: 33333333333333333333333333333333\n",
+        )
+    });
+    assert!(codes(&dir).contains(&"CLAIM_SUPERSEDE_CYCLE"));
+    let dir = defect_copy("supersede-fork");
+    mutate(&dir, "daily/2026-11-02.md", |text| {
+        format!(
+            "{text}\n- [update|high] Another replacement.\n  - claim: 44444444444444444444444444444444\n  - quote: \"standup moves again\"\n  - sources: message:m-4\n  - supersedes: 11111111111111111111111111111111\n"
+        )
+    });
+    assert!(codes(&dir).contains(&"CLAIM_SUPERSEDE_FORK"));
+}
+
+#[test]
+fn promotion_drift_is_caught() {
+    let dir = defect_copy("promotion-drift");
+    mutate(&dir, "curated/standing-facts.md", |text| {
+        text.replace(
+            "quote: \"standup moves to 10:00\"",
+            "quote: \"standup moves to 10:30\"",
+        )
+    });
+    assert!(codes(&dir).contains(&"CLAIM_PROMOTION_DRIFT"));
+}
+
+#[test]
+fn missing_superseded_section_is_caught() {
+    let dir = defect_copy("section-missing");
+    mutate(&dir, "curated/standing-facts.md", |text| {
+        let without_section = text.replace(
+            "## Superseded claims\n\n- 11111111111111111111111111111111 The team standup is at 09:30. Replaced by 33333333333333333333333333333333 on 2026-11-02, the standup time changed.\n",
+            "",
+        );
+        format!(
+            "{without_section}\n- [fact|high] The team standup is at 09:30.\n  - claim: 11111111111111111111111111111111\n  - quote: \"standup is at 09:30 daily\"\n  - sources: message:m-1\n"
+        )
+    });
+    assert!(codes(&dir).contains(&"CLAIM_SECTION_MISSING"));
+}
+
+#[test]
+fn claim_source_defects_are_caught() {
+    let dir = defect_copy("claim-src");
+    mutate(&dir, "daily/2026-11-01.md", |text| {
+        format!(
+            "{text}\n- [fact|high] A claim citing a missing file.\n  - claim: 44444444444444444444444444444444\n  - quote: \"cited\"\n  - sources: daily/2026-12-25.md#claim:44444444444444444444444444444444\n"
+        )
+    });
+    assert!(codes(&dir).contains(&"CLAIM_SRC_UNRESOLVED"));
+    let dir = defect_copy("claim-src-line");
+    mutate(&dir, "daily/2026-11-01.md", |text| {
+        format!(
+            "{text}\n- [fact|high] A claim citing a line number.\n  - claim: 44444444444444444444444444444444\n  - quote: \"cited\"\n  - sources: daily/2026-11-01.md#L12\n"
+        )
+    });
+    assert!(codes(&dir).contains(&"CLAIM_SRC_UNRESOLVED"));
+}
+
+#[test]
+fn registry_defects_are_caught() {
+    let dir = defect_copy("registry-phantom");
+    mutate(&dir, "claims.md", |text| {
+        format!("{text}- 99999999999999999999999999999999 current.\n")
+    });
+    assert!(codes(&dir).contains(&"REGISTRY_STALE"));
+    let dir = defect_copy("registry-withheld-missing");
+    mutate(&dir, "claims.md", |text| {
+        text.replace(
+            "- 11111111111111111111111111111111 withheld, superseded by 33333333333333333333333333333333 on 2026-11-02. Reason, the standup time changed.\n",
+            "",
+        )
+    });
+    assert!(codes(&dir).contains(&"REGISTRY_WITHHELD"));
+    let dir = defect_copy("registry-withheld-reason");
+    mutate(&dir, "claims.md", |text| {
+        text.replace(
+            "Reason, the standup time changed.",
+            "Reason, a different reason.",
+        )
+    });
+    assert!(codes(&dir).contains(&"REGISTRY_WITHHELD"));
+}
+
+#[test]
+fn bank_shape_is_caught() {
+    let dir = defect_copy("bank-shape");
+    write_file(&dir, "bank/index.md", "# Memory bank\n");
+    let mut body = String::from(
+        "---\ntype: Memory Bank\ntitle: \"Bank\"\ndescription: \"A bank concept.\"\ngenerated: { by: \"process:test\", at: \"2026-11-02T00:00:00Z\" }\nsources:\n  - id: root-index\n    resource: index.md\n---\n\n",
+    );
+    for line in 0..251 {
+        body.push_str(&format!("bank line {line}\n"));
+    }
+    write_file(&dir, "bank/bank.md", &body);
+    assert!(codes(&dir).contains(&"BANK_SHAPE"));
+}
+
+#[test]
+fn daily_name_must_be_a_calendar_date() {
+    let dir = defect_copy("daily-name");
+    let text = fs::read_to_string(dir.join("daily/2026-11-01.md")).expect("read daily file");
+    write_file(&dir, "daily/2026-13-45.md", &text);
+    remove(&dir, "daily/2026-11-01.md");
+    assert!(codes(&dir).contains(&"DAILY_NAME"));
+}
+
+#[test]
+fn person_sections_are_caught() {
+    let dir = defect_copy("person-sections");
+    mutate(&dir, "people/ada.md", |text| {
+        text.replace("## Strengthening\n\n- Keep the standup time current.\n", "")
+    });
+    assert!(codes(&dir).contains(&"PERSON_SECTIONS"));
+}
+
+#[test]
+fn log_order_is_caught() {
+    let dir = defect_copy("log-order");
+    mutate(&dir, "log.md", |text| {
+        format!("{text}\n## 2026-11-01\n\n- Earlier.\n\n## 2026-11-03\n\n- Later.\n")
+    });
+    assert!(codes(&dir).contains(&"LOG_ORDER"));
+}
+
+#[test]
+fn unreadable_file_is_caught() {
+    let dir = defect_copy("read-error");
+    fs::write(dir.join("people/broken.md"), [0xff, 0xfe, 0xfd]).expect("write broken file");
+    assert!(codes(&dir).contains(&"READ_ERROR"));
+}
+
+#[cfg(unix)]
+#[test]
+fn symbolic_links_are_reported_not_followed() {
+    let dir = defect_copy("link");
+    std::os::unix::fs::symlink(dir.join("people/ada.md"), dir.join("people/linked.md"))
+        .expect("create symlink");
+    let found = codes(&dir);
+    assert!(found.contains(&"LINK_SKIPPED"), "got {found:?}");
 }

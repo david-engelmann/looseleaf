@@ -18,71 +18,137 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
+use crate::PROFILE_NAME;
 use crate::bundle::{Bundle, Layer};
+
+/// One entry of a curated concept's superseded claims section, the
+/// line shape the profile defines in section 3. `- ` then the old
+/// identity, the old claim text, `Replaced by`, the replacing
+/// identity, `on`, the date, and a one-line reason after a comma.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SupersededEntry {
+    /// The identity of the superseded claim.
+    pub old: String,
+    /// The identity of the claim that replaced it.
+    pub replacement: String,
+    /// The date the supersession is recorded with.
+    pub date: String,
+    /// The one-line reason, when the entry carries one.
+    pub reason: Option<String>,
+}
+
+/// Scan one curated body for the entries of its superseded claims
+/// section. Only lines under a heading naming the superseded claims
+/// section count, so a line elsewhere in the body that merely has the
+/// same shape is not harvested as a record.
+#[must_use]
+pub fn section_entries_in(body: &str) -> Vec<SupersededEntry> {
+    let mut entries = Vec::new();
+    let mut in_section = false;
+    for line in body.lines() {
+        if line.starts_with('#') {
+            in_section = line.to_lowercase().contains("superseded claims");
+            continue;
+        }
+        if !in_section {
+            continue;
+        }
+        let Some(rest) = line.strip_prefix("- ") else {
+            continue;
+        };
+        let Some((old, tail)) = rest.split_once(' ') else {
+            continue;
+        };
+        let Some((_, after)) = tail.split_once(" Replaced by ") else {
+            continue;
+        };
+        let Some((replacement, rest)) = after.split_once(' ') else {
+            continue;
+        };
+        let Some(dated) = rest.strip_prefix("on ") else {
+            continue;
+        };
+        let (date, reason) = match dated.split_once(", ") {
+            Some((date, reason)) => (
+                date.trim().to_owned(),
+                Some(reason.trim().trim_end_matches('.').to_owned()),
+            ),
+            None => (dated.trim().trim_end_matches('.').to_owned(), None),
+        };
+        entries.push(SupersededEntry {
+            old: old.to_owned(),
+            replacement: replacement.to_owned(),
+            date,
+            reason,
+        });
+    }
+    entries
+}
 
 struct Supersession {
     date: Option<String>,
     reason: Option<String>,
 }
 
-/// Scan a curated body for superseded claims section entries of the
-/// form the contract defines, one line per superseded claim carrying
-/// the old identity, the replacing identity, the date and the reason.
+/// The superseded claims sections of the whole curated layer, by old
+/// identity. When two concepts record the same supersession the last
+/// in path order wins, matching the scan's historical behaviour.
 fn scan_superseded_sections(bundle: &Bundle) -> BTreeMap<String, Supersession> {
     let mut found: BTreeMap<String, Supersession> = BTreeMap::new();
     for file in &bundle.files {
         if file.layer != Layer::Curated || file.reserved {
             continue;
         }
-        for line in file.body.lines() {
-            let Some(rest) = line.strip_prefix("- ") else {
-                continue;
-            };
-            let Some((old, tail)) = rest.split_once(' ') else {
-                continue;
-            };
-            let Some((_, after)) = tail.split_once(" Replaced by ") else {
-                continue;
-            };
-            let Some((_, after)) = after.split_once(' ') else {
-                continue;
-            };
-            let Some(reason_part) = after.strip_prefix("on ") else {
-                continue;
-            };
-            let (date, reason) = match reason_part.split_once(", ") {
-                Some((date, reason)) => (
-                    Some(date.trim().to_owned()),
-                    Some(reason.trim().trim_end_matches('.').to_owned()),
-                ),
-                None => (
-                    Some(reason_part.trim().trim_end_matches('.').to_owned()),
-                    None,
-                ),
-            };
-            found.insert(old.to_owned(), Supersession { date, reason });
+        for entry in section_entries_in(&file.body) {
+            found.insert(
+                entry.old,
+                Supersession {
+                    date: Some(entry.date),
+                    reason: entry.reason,
+                },
+            );
         }
     }
     found
 }
 
-/// The ISO date of the daily file that carries a claim, when the
-/// claim lives in the daily layer.
-fn daily_date_of(bundle: &Bundle, claim_id: &str) -> Option<String> {
+/// The ISO date of the daily file carrying each daily claim, computed
+/// once for the whole bundle so rendering stays linear in the number
+/// of claims.
+fn daily_dates(bundle: &Bundle) -> BTreeMap<String, String> {
+    let mut dates: BTreeMap<String, String> = BTreeMap::new();
     for file in &bundle.files {
         if file.layer != Layer::Daily || file.reserved {
             continue;
         }
-        if file
-            .claims
-            .iter()
-            .any(|claim| claim.id.as_deref() == Some(claim_id))
-        {
-            let name = file.rel_path.rsplit('/').next().unwrap_or(&file.rel_path);
-            return Some(name.strip_suffix(".md").unwrap_or(name).to_owned());
+        let name = file.rel_path.rsplit('/').next().unwrap_or(&file.rel_path);
+        let date = name.strip_suffix(".md").unwrap_or(name).to_owned();
+        for claim in &file.claims {
+            if let Some(id) = &claim.id {
+                dates.entry(id.clone()).or_insert_with(|| date.clone());
+            }
         }
     }
-    None
+    dates
+}
+
+/// Escape a stamp for the double-quoted scalar the generated
+/// frontmatter carries it in, so a stamp containing a quote or a
+/// newline can never break out of the scalar and corrupt the file
+/// the tool itself writes.
+fn escape_quoted(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for ch in text.chars() {
+        match ch {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            other => out.push(other),
+        }
+    }
+    out
 }
 
 /// Render the full text of `claims.md` for a bundle, stamped with the
@@ -101,20 +167,27 @@ pub fn render_registry(bundle: &Bundle, at: &str) -> String {
                     ids.push(id.clone());
                 }
                 if let Some(target) = &claim.supersedes {
-                    replacements.insert(target.clone(), id.clone());
+                    // The first claimant in bundle order names the
+                    // replacement. A fork, two claims superseding one
+                    // target, is a checker finding, and the rendering
+                    // stays deterministic while it is resolved.
+                    replacements
+                        .entry(target.clone())
+                        .or_insert_with(|| id.clone());
                 }
             }
         }
     }
     ids.sort();
     let sections = scan_superseded_sections(bundle);
+    let dates = daily_dates(bundle);
     let mut lines: Vec<String> = Vec::new();
     for id in &ids {
         if let Some(replacement) = replacements.get(id) {
             let section = sections.get(id);
             let date = section
                 .and_then(|s| s.date.clone())
-                .or_else(|| daily_date_of(bundle, replacement));
+                .or_else(|| dates.get(replacement).cloned());
             let reason = section.and_then(|s| s.reason.clone());
             let line = match (&date, &reason) {
                 (Some(date), Some(reason)) => format!(
@@ -133,8 +206,10 @@ pub fn render_registry(bundle: &Bundle, at: &str) -> String {
             lines.push(format!("- {id} current."));
         }
     }
+    let actor = format!("process:{PROFILE_NAME}");
+    let stamp = escape_quoted(at);
     let mut out = format!(
-        "---\ntype: Claim Registry\ntitle: \"Claim registry\"\ndescription: \"Generated index of every claim chain in the bundle.\"\ngenerated: {{ by: \"process:looseleaf\", at: \"{at}\" }}\n---\n\n# Claim registry\n\n"
+        "---\ntype: Claim Registry\ntitle: \"Claim registry\"\ndescription: \"Generated index of every claim chain in the bundle.\"\ngenerated: {{ by: \"{actor}\", at: \"{stamp}\" }}\n---\n\n# Claim registry\n\n"
     );
     out.push_str(&lines.join("\n"));
     out.push('\n');
