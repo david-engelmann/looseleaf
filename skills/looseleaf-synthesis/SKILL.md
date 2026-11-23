@@ -45,6 +45,11 @@ from its own impression of it.
   index and the claim registry. Regeneration is deterministic. The
   same bundle state produces byte-identical indexes, which is what
   makes a bad regeneration visible in a diff.
+- Restamp `generated` with its own actor and the pass time on every
+  concept it creates or changes in meaning. A format only edit, a
+  whitespace or link fix, keeps the existing `generated` value, so a
+  cosmetic edit never lapses a verification that was current against
+  the earlier stamp.
 - Assign `stale_after` under a fixed rule set and no other way. A claim
   stating a count, a status or a holder of a role receives a review
   date one pass cycle after the date it was last confirmed. A claim
@@ -71,7 +76,10 @@ from its own impression of it.
   edit in a memory system.
 - Stamp a human verification that did not happen. The pass is a
   machine actor. It stamps its own actor, `process:looseleaf-synthesis`,
-  for checks it truly ran, and never a human actor.
+  for checks it truly ran, and never a human actor. It never stamps
+  any verification on a concept it created or changed in meaning in
+  the same pass. Those concepts enter the re-verification queue,
+  because a run cannot verify its own edits.
 - Promote a claim whose quote does not verify against its source.
   Re-read the source message or file passage first. A quote that fails
   to match blocks that promotion and lands in the report as a

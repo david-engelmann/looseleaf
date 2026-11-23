@@ -226,3 +226,78 @@ with no usable title lists under its file stem, and the checker
 flags the missing title on its own rule. The root index stays human
 owned in this slice. Its frontmatter is the owner's, and its body
 regeneration is the line-preserving edit of Slice 2.
+
+## D16. Divergences from the official OKF skills
+
+Added 2026-11-23 under the applicability audit of the same date. The
+synthesis contract and the profile were read against the two official
+Agent Skills that shipped with OKF v0.3, okf-generate and okf-consume,
+including the consume skill's trust reference. Where a host agent
+holding the official skills would read or write a looseleaf bundle
+differently than this product expects, the divergence and its
+disposition are recorded here. The claim level machinery is this
+product's own by design, loss L-11 in the Phase 1 record, and is out
+of scope for this entry except where the official skills touch it.
+
+- Index entry shape. Okf-generate writes each index entry as a linked
+  title followed by the concept's description, grouped under
+  headings. Looseleaf layer indexes are a heading and one bare linked
+  bullet per concept, byte stable across regenerations.
+  Disposition, ours stands. Index entry format is not one of the
+  standard's conformance rules, the description lives in the
+  concept's frontmatter where consumers read it, and byte stability
+  is what makes a bad regeneration visible in a diff.
+- The claim registry reads as a concept. Claims.md carries the type
+  Claim Registry, so an okf-consume host treats it as a concept and
+  may cite it as knowledge. Disposition, accepted. Its description
+  states that it is a generated index, its content is a truthful
+  index of the bundle's own claim chains, and carrying a type is
+  what keeps the file visible to standard tooling and to this
+  product's own layout rules.
+- Claim level provenance. Okf-generate cites a specific claim with a
+  body footnote whose label is a sources entry id. Looseleaf carries
+  claim provenance in claim blocks and the registry, so a consume
+  host sees concept level sources only and no claim level citations.
+  Disposition, by design under L-11. The standard has no home for
+  claim level supersession. The pass keeps each concept's body
+  current, so a consumer is never served superseded claim text as
+  current body content.
+- Sources containment. Okf-consume treats a path that resolves
+  outside the bundle as an external reference to weigh, and a
+  resource containing spaces as a scope descriptor rather than a
+  path. The profile requires a sources resource to resolve inside
+  the bundle or be an absolute URL, and the checker errors
+  otherwise. Disposition, a deliberate tightening, and it stands.
+  This product's provenance must be re-readable by the pass that
+  verifies quotes against their sources, and unverifiable provenance
+  is the defect the checker exists to catch. The dogfood run against
+  the Phase 1 prototype bundle showed the rule working, 45 sources
+  named the living source tree the bundle was converted from and
+  none resolved in bundle.
+- Generated on format only edits. Okf-generate keeps the existing
+  generated value when a change only fixes format, whitespace or
+  links, and restamps it on a change in meaning. The profile stamps
+  the pass in generated without drawing that line. Disposition,
+  adopted into the synthesis contract. The pass restamps generated
+  only when it creates a concept or changes one in meaning, so a
+  cosmetic edit never lapses a verification that was current against
+  the earlier stamp.
+- The verified self stamp. Okf-generate never records a verification
+  on content its own run generated. The contract had the pass
+  stamping its actor for checks it truly ran, without excluding
+  content the same pass created or changed. Disposition, adopted
+  into the synthesis contract. The pass never stamps a verification
+  on a concept it created or changed in meaning in the same pass.
+  Those concepts enter the re-verification queue instead.
+- Checked and aligned, no divergence recorded. The root index
+  carries frontmatter with a title, a scope description and a
+  license, and consumers choose bundles by that description. Layer
+  index and log files carry no frontmatter. Log entries sit under
+  dated headings, newest first. Status and superseded_by carry the
+  standard's meanings, including following superseded_by from a
+  deprecated concept to its replacement. Verified written as one
+  mapping or as a list of mappings is read natively by the consume
+  trust rules, which treat a single mapping as a list of one.
+  Unknown keys are preserved by every writer on both sides. Path
+  fields written with a leading slash resolve from the bundle root,
+  and the checker's resolver accepts that form.
