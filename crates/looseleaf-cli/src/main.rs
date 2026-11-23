@@ -5,7 +5,8 @@
 //! subcommand checks a bundle directory against the profile in
 //! `docs/PROFILE.md` and prints one line per finding, exiting 1 when
 //! any finding is an error and 0 otherwise. The `write-registry`
-//! subcommand regenerates the bundle's claim registry. Arguments are
+//! subcommand regenerates the bundle's claim registry and the
+//! `write-indexes` subcommand regenerates every layer index. Arguments are
 //! strict. Anything the tool does not recognise is a usage error with
 //! exit code 2, never something silently ignored, and a non-UTF-8
 //! argument is reported rather than panicking, because a bundle path
@@ -30,10 +31,11 @@ fn main() -> ExitCode {
     match command {
         "check" => run_check(&args[1..]),
         "write-registry" => run_write_registry(&args[1..]),
+        "write-indexes" => run_write_indexes(&args[1..]),
         other => {
             eprintln!("unknown subcommand {other}");
             eprintln!(
-                "usage: looseleaf [check <bundle>] [write-registry <bundle> --at <timestamp>]"
+                "usage: looseleaf [check <bundle>] [write-registry <bundle> --at <timestamp>] [write-indexes <bundle>]"
             );
             ExitCode::from(2)
         }
@@ -65,6 +67,29 @@ fn run_check(args: &[OsString]) -> ExitCode {
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE
+    }
+}
+
+fn run_write_indexes(args: &[OsString]) -> ExitCode {
+    if args.len() != 1 {
+        eprintln!("usage: looseleaf write-indexes <bundle>");
+        return ExitCode::from(2);
+    }
+    match looseleaf_core::indexes::regenerate_indexes(Path::new(&args[0])) {
+        Ok(written) if written.is_empty() => {
+            println!("indexes already current");
+            ExitCode::SUCCESS
+        }
+        Ok(written) => {
+            for rel in &written {
+                println!("index regenerated, {rel}");
+            }
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("could not regenerate the indexes, {error}");
+            ExitCode::FAILURE
+        }
     }
 }
 

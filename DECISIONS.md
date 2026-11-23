@@ -213,3 +213,16 @@ rather than repairs are recorded here.
 - A supersession fork is a warning and a supersession cycle is an
   error. The registry renderer names the first claimant in bundle
   order while a fork is resolved, so rendering stays deterministic.
+
+## D15. Index regeneration
+
+Added 2026-11-23 with Phase 2 Slice 1. Layer indexes are generated
+files in the shape the clean fixture already carried by hand, a
+heading and one linked bullet per concept, and the renderer
+reproduces the fixture's indexes byte for byte. Only layer
+directories present in the bundle are written, because creating a
+layer directory is a layout act rather than a writer act. A concept
+with no usable title lists under its file stem, and the checker
+flags the missing title on its own rule. The root index stays human
+owned in this slice. Its frontmatter is the owner's, and its body
+regeneration is the line-preserving edit of Slice 2.
