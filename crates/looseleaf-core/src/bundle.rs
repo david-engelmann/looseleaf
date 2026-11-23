@@ -166,7 +166,7 @@ fn collect_markdown(dir: &Path, out: &mut Vec<PathBuf>) {
         return;
     };
     let mut paths: Vec<PathBuf> = entries
-        .filter_map(|entry| entry.ok().map(|e| e.path()))
+        .filter_map(|entry| entry.ok().map(std::fs::DirEntry::path))
         .collect();
     paths.sort();
     for path in paths {

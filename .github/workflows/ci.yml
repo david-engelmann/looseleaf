@@ -107,12 +107,12 @@ jobs:
       # The declared rust-version is a promise, so CI builds and tests
       # at exactly that version. RUSTUP_TOOLCHAIN overrides the
       # development pin in rust-toolchain.toml.
-      RUSTUP_TOOLCHAIN: "1.88.0"
+      RUSTUP_TOOLCHAIN: "1.91"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install the declared rust-version
         run: |
-          rustup toolchain install 1.88.0
+          rustup toolchain install 1.91
           rustup show active-toolchain
       - name: Build at the declared rust-version
         run: cargo build --workspace --all-features

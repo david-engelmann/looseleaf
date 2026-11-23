@@ -470,16 +470,16 @@ fn check_claims(bundle: &Bundle, out: &mut Findings) {
                 .claims
                 .iter()
                 .find(|claim| claim.id.as_deref() == Some(id.as_str()));
-            if let Some(curated_claim) = curated_claim {
-                if curated_claim.text != *daily_text {
-                    out.warning(
-                        "CLAIM_PROMOTION_DRIFT",
-                        &curated_file.rel_path,
-                        format!(
-                            "promoted claim {id} reads differently in curated than in daily, and a wording change is a new claim, not a promotion"
-                        ),
-                    );
-                }
+            if let Some(curated_claim) = curated_claim
+                && curated_claim.text != *daily_text
+            {
+                out.warning(
+                    "CLAIM_PROMOTION_DRIFT",
+                    &curated_file.rel_path,
+                    format!(
+                        "promoted claim {id} reads differently in curated than in daily, and a wording change is a new claim, not a promotion"
+                    ),
+                );
             }
         }
     }
