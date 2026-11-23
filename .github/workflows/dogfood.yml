@@ -1,0 +1,41 @@
+name: dogfood
+
+# Diagnostic workflow, dispatched by hand, never a gate.
+# It builds the looseleaf CLI on a runner and keeps the binary as a
+# run artifact. The bundle it will check never travels. The Phase 1
+# prototype bundle is a conversion of a real memory tree and stays on
+# its owner's machine under the design record, so the binary goes to
+# the bundle, never the other way round. The check runs where the
+# bundle lives and its output is banked in the Phase 1 record.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dogfood-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-cli:
+    name: build-cli
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install the pinned toolchain
+        run: |
+          rustup toolchain install
+          rustup show active-toolchain
+      - name: Build the CLI
+        run: cargo build -p looseleaf
+      - name: Keep the binary as a run artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: looseleaf-cli
+          path: target/debug/looseleaf
+          retention-days: 7
