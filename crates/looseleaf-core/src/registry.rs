@@ -21,7 +21,6 @@ use std::path::Path;
 use crate::bundle::{Bundle, Layer};
 
 struct Supersession {
-    replacement: String,
     date: Option<String>,
     reason: Option<String>,
 }
@@ -45,7 +44,7 @@ fn scan_superseded_sections(bundle: &Bundle) -> BTreeMap<String, Supersession> {
             let Some((_, after)) = tail.split_once(" Replaced by ") else {
                 continue;
             };
-            let Some((replacement, after)) = after.split_once(' ') else {
+            let Some((_, after)) = after.split_once(' ') else {
                 continue;
             };
             let Some(reason_part) = after.strip_prefix("on ") else {
@@ -61,14 +60,7 @@ fn scan_superseded_sections(bundle: &Bundle) -> BTreeMap<String, Supersession> {
                     None,
                 ),
             };
-            found.insert(
-                old.to_owned(),
-                Supersession {
-                    replacement: replacement.to_owned(),
-                    date,
-                    reason,
-                },
-            );
+            found.insert(old.to_owned(), Supersession { date, reason });
         }
     }
     found

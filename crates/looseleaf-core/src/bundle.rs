@@ -166,14 +166,13 @@ fn collect_markdown(dir: &Path, out: &mut Vec<PathBuf>) {
         return;
     };
     let mut paths: Vec<PathBuf> = entries
-        .filter_map(|entry| entry.ok().map(std::fs::DirEntry::path))
+        .filter_map(|entry| entry.ok().map(|e| e.path()))
         .collect();
     paths.sort();
     for path in paths {
         let name = path
             .file_name()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_default();
+            .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
         if name.starts_with('.') {
             continue;
         }
@@ -216,13 +215,13 @@ pub fn read_bundle(root: &Path) -> Bundle {
             .join("/");
         let file_name = relative
             .file_name()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_default();
+            .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
         let first = relative
             .components()
             .next()
-            .map(|part| part.as_os_str().to_string_lossy().into_owned())
-            .unwrap_or_default();
+            .map_or_else(String::new, |part| {
+                part.as_os_str().to_string_lossy().into_owned()
+            });
         let layer = if rel_path.contains('/') {
             Layer::from_dir(&first).unwrap_or(Layer::Root)
         } else {

@@ -91,7 +91,7 @@ pub fn scan_claims(body: &str) -> Vec<Claim> {
         } else if let Some(value) = sub.strip_prefix("sources:") {
             current.sources = value
                 .split(',')
-                .map(|part| parse_scalar(part))
+                .map(parse_scalar)
                 .filter(|part| !part.is_empty())
                 .collect();
         } else if let Some(value) = sub.strip_prefix("supersedes:") {
@@ -130,6 +130,6 @@ mod tests {
     fn ignores_ordinary_lists() {
         let body = "- A shopping list item\n- [notatag] no pipe here\n  - claim: orphan\n";
         let claims = scan_claims(body);
-        assert!(claims.is_empty());
+        assert_eq!(claims.len(), 0);
     }
 }

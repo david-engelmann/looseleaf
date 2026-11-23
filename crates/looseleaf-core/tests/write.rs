@@ -82,8 +82,9 @@ fn regeneration_repairs_a_missing_registry_and_the_checker_agrees() {
     let repaired = fs::read_to_string(dir.join("claims.md")).expect("read repaired registry");
     assert_eq!(repaired, expected);
     let after = check_bundle(&dir);
-    assert!(
-        after.findings.is_empty(),
+    assert_eq!(
+        after.findings.len(),
+        0,
         "the repaired bundle must check clean, got {:?}",
         after.findings
     );
@@ -106,8 +107,9 @@ fn regeneration_picks_up_a_new_claim() {
         "the new claim must appear as current, got:\n{registry}"
     );
     let after = check_bundle(&dir);
-    assert!(
-        after.findings.is_empty(),
+    assert_eq!(
+        after.findings.len(),
+        0,
         "the bundle must check clean after regeneration, got {:?}",
         after.findings
     );
@@ -134,8 +136,9 @@ fn upsert_on_a_bundle_file_preserves_the_extension_key() {
     );
     fs::write(&person_path, &result.text).expect("write person file");
     let after = check_bundle(&dir);
-    assert!(
-        after.findings.is_empty(),
+    assert_eq!(
+        after.findings.len(),
+        0,
         "the bundle must still check clean, got {:?}",
         after.findings
     );

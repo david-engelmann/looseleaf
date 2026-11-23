@@ -189,8 +189,8 @@ pub fn upsert_frontmatter(text: &str, key: &str, value: &Value) -> Result<Upsert
     // Locate the existing entry for the key at indent zero.
     let mut start: Option<usize> = None;
     let mut end: usize = close;
-    for index in 1..close {
-        let line = lines[index];
+    for (index, line) in lines.iter().enumerate().take(close).skip(1) {
+        let line = *line;
         if line.is_empty() || line.starts_with(' ') {
             continue;
         }
@@ -206,24 +206,21 @@ pub fn upsert_frontmatter(text: &str, key: &str, value: &Value) -> Result<Upsert
     }
     let rendered = render_top_entry(key, value);
     let mut out_lines: Vec<String> = Vec::new();
-    match start {
-        Some(begin) => {
-            for line in &lines[..begin] {
-                out_lines.push((*line).to_owned());
-            }
-            out_lines.extend(rendered);
-            for line in &lines[end..] {
-                out_lines.push((*line).to_owned());
-            }
+    if let Some(begin) = start {
+        for line in &lines[..begin] {
+            out_lines.push((*line).to_owned());
         }
-        None => {
-            for line in &lines[..close] {
-                out_lines.push((*line).to_owned());
-            }
-            out_lines.extend(rendered);
-            for line in &lines[close..] {
-                out_lines.push((*line).to_owned());
-            }
+        out_lines.extend(rendered);
+        for line in &lines[end..] {
+            out_lines.push((*line).to_owned());
+        }
+    } else {
+        for line in &lines[..close] {
+            out_lines.push((*line).to_owned());
+        }
+        out_lines.extend(rendered);
+        for line in &lines[close..] {
+            out_lines.push((*line).to_owned());
         }
     }
     let mut out = out_lines.join("\n");

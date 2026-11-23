@@ -54,8 +54,9 @@ fn codes(dir: &Path) -> Vec<&'static str> {
 #[test]
 fn clean_bundle_passes_without_findings() {
     let report = check_bundle(&clean_fixture());
-    assert!(
-        report.findings.is_empty(),
+    assert_eq!(
+        report.findings.len(),
+        0,
         "clean fixture drew findings: {:?}",
         report.findings
     );
