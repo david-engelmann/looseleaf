@@ -21,10 +21,10 @@ Nothing in the bundle needs looseleaf itself to stay readable. The files are pla
 
 ## How it is used
 
-The looseleaf command line tool checks a bundle against the profile, rebuilds the claim registry and the layer indexes, and reports anything in the bundle that breaks the rules. The synthesis pass itself is a written contract that a host agent follows, and the tool checks the result against that contract. The tool never calls a model. Judgment lives in the contract, where a person can read it and an auditor can test it.
+The looseleaf command line tool checks a bundle against the profile, rebuilds the claim registry, the layer indexes and the root index, appends dated entries to the bundle and layer logs, and reports anything in the bundle that breaks the rules. The synthesis pass itself is a written contract that a host agent follows, and the tool checks the result against that contract. The tool never calls a model. Judgment lives in the contract, where a person can read it and an auditor can test it.
 
 Some acts stay with the person who owns the memory. The tool will not retire a standing directive, name a relationship on a person file, delete a file or run the first pass over a new collection of files on its own. Those calls belong to the owner, and the contract says so.
 
 ## Status
 
-The bundle checker and the claim registry writer have landed and pass the hosted gate. Index regeneration is the next slice. The crates are not yet published.
+The bundle checker, the claim registry writer, layer and root index regeneration, and dated log appends have landed and pass the hosted gate. The synthesis pass mechanics are the next slice. The crates are not yet published.

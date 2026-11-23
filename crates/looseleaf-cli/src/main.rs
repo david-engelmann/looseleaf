@@ -5,8 +5,11 @@
 //! subcommand checks a bundle directory against the profile in
 //! `docs/PROFILE.md` and prints one line per finding, exiting 1 when
 //! any finding is an error and 0 otherwise. The `write-registry`
-//! subcommand regenerates the bundle's claim registry and the
-//! `write-indexes` subcommand regenerates every layer index. Arguments are
+//! subcommand regenerates the bundle's claim registry, the
+//! `write-indexes` subcommand regenerates every layer index, the
+//! `write-root-index` subcommand regenerates the root index body
+//! under its preserved frontmatter, and the `append-log` subcommand
+//! appends one dated entry to a bundle or layer log. Arguments are
 //! strict. Anything the tool does not recognise is a usage error with
 //! exit code 2, never something silently ignored, and a non-UTF-8
 //! argument is reported rather than panicking, because a bundle path
@@ -32,10 +35,12 @@ fn main() -> ExitCode {
         "check" => run_check(&args[1..]),
         "write-registry" => run_write_registry(&args[1..]),
         "write-indexes" => run_write_indexes(&args[1..]),
+        "write-root-index" => run_write_root_index(&args[1..]),
+        "append-log" => run_append_log(&args[1..]),
         other => {
             eprintln!("unknown subcommand {other}");
             eprintln!(
-                "usage: looseleaf [check <bundle>] [write-registry <bundle> --at <timestamp>] [write-indexes <bundle>]"
+                "usage: looseleaf [check <bundle>] [write-registry <bundle> --at <timestamp>] [write-indexes <bundle>] [write-root-index <bundle>] [append-log <bundle> --date <date> --entry <text> [--layer <curated|daily>]]"
             );
             ExitCode::from(2)
         }
@@ -113,6 +118,70 @@ fn run_write_registry(args: &[OsString]) -> ExitCode {
         }
         Err(error) => {
             eprintln!("could not regenerate the registry, {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn run_write_root_index(args: &[OsString]) -> ExitCode {
+    if args.len() != 1 {
+        eprintln!("usage: looseleaf write-root-index <bundle>");
+        return ExitCode::from(2);
+    }
+    match looseleaf_core::indexes::regenerate_root_index(Path::new(&args[0])) {
+        Ok(Some(rel)) => {
+            println!("root index regenerated, {rel}");
+            ExitCode::SUCCESS
+        }
+        Ok(None) => {
+            println!("root index already current");
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("could not regenerate the root index, {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn run_append_log(args: &[OsString]) -> ExitCode {
+    let shape_ok = (args.len() == 5 || args.len() == 7)
+        && args[1].to_str() == Some("--date")
+        && args[3].to_str() == Some("--entry")
+        && (args.len() == 5 || args[5].to_str() == Some("--layer"));
+    if !shape_ok {
+        eprintln!(
+            "usage: looseleaf append-log <bundle> --date <date> --entry <text> [--layer <curated|daily>]"
+        );
+        return ExitCode::from(2);
+    }
+    let (Some(date), Some(entry)) = (args[2].to_str(), args[4].to_str()) else {
+        eprintln!("the --date and --entry values must be valid UTF-8");
+        return ExitCode::from(2);
+    };
+    let scope = if args.len() == 7 {
+        match args[6].to_str() {
+            Some("curated") => {
+                looseleaf_core::logs::LogScope::Layer(looseleaf_core::bundle::Layer::Curated)
+            }
+            Some("daily") => {
+                looseleaf_core::logs::LogScope::Layer(looseleaf_core::bundle::Layer::Daily)
+            }
+            _ => {
+                eprintln!("--layer names curated or daily, the layers the profile gives a log");
+                return ExitCode::from(2);
+            }
+        }
+    } else {
+        looseleaf_core::logs::LogScope::Root
+    };
+    match looseleaf_core::logs::append_log(Path::new(&args[0]), scope, date, entry) {
+        Ok(rel) => {
+            println!("log entry appended, {rel}");
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("could not append the log entry, {error}");
             ExitCode::FAILURE
         }
     }

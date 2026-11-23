@@ -301,3 +301,29 @@ of scope for this entry except where the official skills touch it.
   Unknown keys are preserved by every writer on both sides. Path
   fields written with a leading slash resolve from the bundle root,
   and the checker's resolver accepts that form.
+
+## D17. Root index regeneration and log appends
+
+Added 2026-11-23 with Phase 2 Slice 2. The root index body is a
+generated layer list. Regenerating it preserves the frontmatter
+span and the heading line byte for byte and rewrites only what
+sits below the heading, one bullet per layer directory present in
+the bundle, in profile order, rendered as a link to the layer
+directory followed by the layer's concept count. A hand written
+description in the old bullet shape does not survive regeneration,
+because the list is generated in full and a half generated list is
+how indexes drift. A root index with no frontmatter or no heading
+is refused, since both are the checker's findings to report and
+the owner's to supply, never the writer's to invent.
+
+Log appends are the one dated mechanical edit. An append whose
+date equals the log's newest section joins that section after its
+last entry. A newer date opens a new section at the top. An older
+date is refused, because placing it would edit history into order
+rather than append to it. Appends exist only for the three logs
+the profile names, the bundle log and the curated and daily layer
+logs. A missing one of those is created with the heading the clean
+fixture carries, so a checker finding about the missing file does
+not block the append that repairs it. An entry is one non-empty
+line, rendered as one bullet, and every date is a real calendar
+date given as an argument, never a clock reading.

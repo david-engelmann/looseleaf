@@ -619,7 +619,7 @@ fn check_log_order(file: &ConceptFile, out: &mut Findings) {
 }
 
 /// Whether a `YYYY-MM-DD` shaped string is a real calendar date.
-fn is_calendar_date(text: &str) -> bool {
+pub(crate) fn is_calendar_date(text: &str) -> bool {
     let bytes = text.as_bytes();
     if bytes.len() != 10 || bytes[4] != b'-' || bytes[7] != b'-' {
         return false;

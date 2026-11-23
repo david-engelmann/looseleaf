@@ -7,6 +7,6 @@ license: MIT OR Apache-2.0
 
 # Clean fixture bundle
 
-* [Curated memory](curated/) - Standing facts
-* [Daily logs](daily/) - Per-day claim logs
-* [People](people/) - People the agent works with
+* [Curated memory](curated/) - 1 concept
+* [People](people/) - 1 concept
+* [Daily logs](daily/) - 2 concepts

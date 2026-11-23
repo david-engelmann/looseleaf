@@ -16,9 +16,12 @@
 //! entries, and a layer with no concepts renders a heading and no
 //! bullets.
 //!
-//! The root index is not regenerated here. Its frontmatter is human
-//! owned, and regenerating its body is a line-preserving edit that
-//! belongs to a later slice.
+//! The root index is regenerated here too, as a line-preserving
+//! edit. Its frontmatter is human owned and is preserved byte for
+//! byte, its heading line is preserved as written, and the body
+//! below the heading is the generated layer list, one bullet per
+//! layer present in the bundle, in profile order, with the layer's
+//! concept count.
 
 use std::fs;
 use std::path::Path;
@@ -160,4 +163,98 @@ pub fn regenerate_indexes(root: &Path) -> std::io::Result<Vec<String>> {
         written.push(rel);
     }
     Ok(written)
+}
+
+/// Split a document into its raw frontmatter span, fences included,
+/// and the body that follows it. Returns `None` when the document
+/// carries no frontmatter block. The span is a slice of the input,
+/// so a renderer can carry it into its output byte for byte.
+fn frontmatter_span(text: &str) -> Option<(&str, &str)> {
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    let mut offset = 0;
+    let mut lines = text.split_inclusive('\n');
+    let first = lines.next()?;
+    if first.trim_end_matches(['\r', '\n']) != "---" {
+        return None;
+    }
+    offset += first.len();
+    for line in lines {
+        offset += line.len();
+        if line.trim_end_matches(['\r', '\n']).trim_end() == "---" {
+            return Some((&text[..offset], &text[offset..]));
+        }
+    }
+    None
+}
+
+/// Render the root `index.md` for a bundle from its current text.
+/// The frontmatter span and the heading line are carried over
+/// unchanged. The body below the heading is the layer list, one
+/// bullet per layer directory present in the bundle, in profile
+/// order, each with the layer's concept count. Returns `None` when
+/// the current text carries no frontmatter or no heading, which are
+/// the checker's findings to report, not the writer's to invent.
+#[must_use]
+pub fn render_root_index(bundle: &Bundle, current: &str) -> Option<String> {
+    let (span, body) = frontmatter_span(current)?;
+    let title_line = body
+        .lines()
+        .find(|line| line.starts_with("# "))
+        .map(str::to_owned)?;
+    let eol = if current.contains("\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
+    let mut out = String::from(span);
+    out.push_str(eol);
+    out.push_str(&title_line);
+    let mut bullets: Vec<String> = Vec::new();
+    for layer in LAYERS {
+        let Some(dir) = layer.dir_name() else {
+            continue;
+        };
+        if !bundle.has_dir(dir) {
+            continue;
+        }
+        let count = entries_for(bundle, layer).len();
+        let noun = if count == 1 { "concept" } else { "concepts" };
+        bullets.push(format!("* [{}]({dir}/) - {count} {noun}", heading(layer)));
+    }
+    if !bullets.is_empty() {
+        out.push_str(eol);
+        out.push_str(eol);
+        out.push_str(&bullets.join(eol));
+    }
+    out.push_str(eol);
+    Some(out)
+}
+
+/// Regenerate the root `index.md` of the bundle at the given root,
+/// returning its bundle-relative path when it changed and `None`
+/// when it was already current. The write goes to a sibling
+/// temporary file and is renamed over the target.
+///
+/// # Errors
+///
+/// Returns an I/O error when the root index cannot be read or
+/// written, and an `InvalidData` error when it carries no
+/// frontmatter or no heading for the renderer to preserve.
+pub fn regenerate_root_index(root: &Path) -> std::io::Result<Option<String>> {
+    let target = root.join("index.md");
+    let current = fs::read_to_string(&target)?;
+    let bundle = read_bundle(root);
+    let Some(rendered) = render_root_index(&bundle, &current) else {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "the root index carries no frontmatter or no heading to preserve",
+        ));
+    };
+    if rendered == current {
+        return Ok(None);
+    }
+    let temp = root.join("index.md.tmp-looseleaf");
+    fs::write(&temp, rendered)?;
+    fs::rename(&temp, &target)?;
+    Ok(Some("index.md".to_owned()))
 }
