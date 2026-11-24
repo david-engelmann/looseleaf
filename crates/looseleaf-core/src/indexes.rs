@@ -112,12 +112,23 @@ pub fn render_layer_index(bundle: &Bundle, layer: Layer) -> String {
     }
     for file in entries {
         let name = file.rel_path.rsplit('/').next().unwrap_or(&file.rel_path);
+        // The link target is the path inside the layer directory,
+        // so a concept in a nested subdirectory still points at
+        // its own file.
+        let target = match layer.dir_name() {
+            Some(dir) => file
+                .rel_path
+                .strip_prefix(dir)
+                .and_then(|rest| rest.strip_prefix('/'))
+                .unwrap_or(name),
+            None => name,
+        };
         let text = if layer == Layer::Daily {
             name.strip_suffix(".md").unwrap_or(name).to_owned()
         } else {
             title_of(file)
         };
-        lines.push(format!("* [{text}]({name})"));
+        lines.push(format!("* [{text}]({target})"));
     }
     let mut out = lines.join("\n");
     out.push('\n');
@@ -135,7 +146,8 @@ pub fn render_layer_index(bundle: &Bundle, layer: Layer) -> String {
 /// # Errors
 ///
 /// Returns an I/O error when an existing index cannot be read or a
-/// replacement cannot be written.
+/// replacement cannot be written, and an `InvalidInput` error when
+/// a layer directory present in the bundle is a symbolic link.
 pub fn regenerate_indexes(root: &Path) -> std::io::Result<Vec<String>> {
     let bundle = read_bundle(root);
     let mut written: Vec<String> = Vec::new();
@@ -145,6 +157,15 @@ pub fn regenerate_indexes(root: &Path) -> std::io::Result<Vec<String>> {
         };
         if !bundle.has_dir(dir) {
             continue;
+        }
+        // The bundle walker never follows a symbolic link, so a
+        // layer directory that is one holds no concepts this tool
+        // can see, and writing its index would land outside the
+        // bundle. Refuse rather than follow it.
+        if fs::symlink_metadata(root.join(dir)).is_ok_and(|meta| meta.file_type().is_symlink()) {
+            return Err(crate::write::invalid_input(format!(
+                "the layer directory {dir} is a symbolic link, and the writers never write through one"
+            )));
         }
         let rendered = render_layer_index(&bundle, layer);
         let rel = format!("{dir}/index.md");
@@ -170,9 +191,16 @@ pub fn regenerate_indexes(root: &Path) -> std::io::Result<Vec<String>> {
 /// carries no frontmatter block. The span is a slice of the input,
 /// so a renderer can carry it into its output byte for byte.
 pub(crate) fn frontmatter_span(text: &str) -> Option<(&str, &str)> {
-    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    // A leading byte order mark rides inside the span, so a
+    // renderer carrying the span byte for byte keeps the mark.
+    let bom = if text.starts_with('\u{feff}') {
+        '\u{feff}'.len_utf8()
+    } else {
+        0
+    };
+    let inner = &text[bom..];
     let mut offset = 0;
-    let mut lines = text.split_inclusive('\n');
+    let mut lines = inner.split_inclusive('\n');
     let first = lines.next()?;
     if first.trim_end_matches(['\r', '\n']) != "---" {
         return None;
@@ -181,34 +209,45 @@ pub(crate) fn frontmatter_span(text: &str) -> Option<(&str, &str)> {
     for line in lines {
         offset += line.len();
         if line.trim_end_matches(['\r', '\n']).trim_end() == "---" {
-            return Some((&text[..offset], &text[offset..]));
+            return Some((&text[..bom + offset], &text[bom + offset..]));
         }
     }
     None
 }
 
 /// Render the root `index.md` for a bundle from its current text.
-/// The frontmatter span and the heading line are carried over
-/// unchanged. The body below the heading is the layer list, one
-/// bullet per layer directory present in the bundle, in profile
-/// order, each with the layer's concept count. Returns `None` when
-/// the current text carries no frontmatter or no heading, which are
-/// the checker's findings to report, not the writer's to invent.
+/// The frontmatter span and everything in the body up to and
+/// including the heading line are carried over as a raw slice, so
+/// they survive byte for byte. The body below the heading is the
+/// layer list, one bullet per layer directory present in the
+/// bundle, in profile order, each with the layer's concept count.
+/// The heading is the first `# ` line outside a fenced code block.
+/// Returns `None` when the current text carries no frontmatter or
+/// no heading, which are the checker's findings to report, not the
+/// writer's to invent.
 #[must_use]
 pub fn render_root_index(bundle: &Bundle, current: &str) -> Option<String> {
     let (span, body) = frontmatter_span(current)?;
-    let title_line = body
-        .lines()
-        .find(|line| line.starts_with("# "))
-        .map(str::to_owned)?;
-    let eol = if current.contains("\r\n") {
-        "\r\n"
-    } else {
-        "\n"
-    };
+    let mut in_fence = false;
+    let mut consumed = 0;
+    let mut heading_end: Option<usize> = None;
+    for segment in body.split_inclusive('\n') {
+        let line = segment.trim_end_matches(['\r', '\n']);
+        if line.starts_with("```") {
+            in_fence = !in_fence;
+        } else if !in_fence && line.starts_with("# ") {
+            heading_end = Some(consumed + segment.len());
+            break;
+        }
+        consumed += segment.len();
+    }
+    let heading_end = heading_end?;
+    let eol = crate::write::line_ending(current);
     let mut out = String::from(span);
-    out.push_str(eol);
-    out.push_str(&title_line);
+    out.push_str(&body[..heading_end]);
+    if !out.ends_with('\n') {
+        out.push_str(eol);
+    }
     let mut bullets: Vec<String> = Vec::new();
     for layer in LAYERS {
         let Some(dir) = layer.dir_name() else {
@@ -238,16 +277,15 @@ pub fn render_root_index(bundle: &Bundle, current: &str) -> Option<String> {
 /// # Errors
 ///
 /// Returns an I/O error when the root index cannot be read or
-/// written, and an `InvalidData` error when it carries no
+/// written, and an `InvalidInput` error when it carries no
 /// frontmatter or no heading for the renderer to preserve.
 pub fn regenerate_root_index(root: &Path) -> std::io::Result<Option<String>> {
     let target = root.join("index.md");
     let current = fs::read_to_string(&target)?;
     let bundle = read_bundle(root);
     let Some(rendered) = render_root_index(&bundle, &current) else {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "the root index carries no frontmatter or no heading to preserve",
+        return Err(crate::write::invalid_input(
+            "the root index carries no frontmatter or no heading to preserve".to_owned(),
         ));
     };
     if rendered == current {

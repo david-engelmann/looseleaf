@@ -7,13 +7,16 @@
 //! staleness is a contract judgment. Promotion copies one claim
 //! from a daily file into a named curated concept with its
 //! identity, quote and sources unchanged, and refuses when the
-//! curated layer already carries the identity with different
-//! wording, which is the drift the checker flags. When a promotion
-//! carries a supersedes link, the superseded claims section of the
-//! target concept gains the entry in the exact line shape the
-//! registry scanner reads, so the registry's date and reason have
-//! their contract home. No step reads a clock. Every date comes
-//! from an argument or from the daily file's own name.
+//! curated layer already carries the identity anywhere, identically
+//! in another concept or with different wording in any concept,
+//! which is the drift and duplication the checker flags. When a
+//! promotion carries a supersedes link, the superseded claims
+//! section entry goes to the concept that holds the superseded
+//! claim, or to the target when the superseded claim was never
+//! promoted, and the superseded claim's curated copy gains the
+//! `superseded-by` reverse link the profile assigns to this
+//! moment. No step reads a clock. Every date comes from an
+//! argument or from the daily file's own name.
 
 use std::fs;
 use std::path::Path;
@@ -21,18 +24,10 @@ use std::path::Path;
 use crate::bundle::{Bundle, Layer, read_bundle};
 use crate::check::is_calendar_date;
 use crate::claim::{Claim, scan_claims};
-use crate::frontmatter::Value;
+use crate::frontmatter::{Frontmatter, Value};
 use crate::indexes::frontmatter_span;
-use crate::registry::section_entries_in;
-use crate::write::render_scalar;
-
-fn invalid(message: String) -> std::io::Error {
-    std::io::Error::new(std::io::ErrorKind::InvalidInput, message)
-}
-
-fn not_found(message: String) -> std::io::Error {
-    std::io::Error::new(std::io::ErrorKind::NotFound, message)
-}
+use crate::registry::{escape_quoted, section_entries_in};
+use crate::write::{invalid_input as invalid, line_ending, not_found, render_scalar};
 
 /// One concept whose `stale_after` has passed at the given stamp.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -69,7 +64,7 @@ fn verified_at_of(value: &Value) -> Option<&str> {
 
 /// The newest verification stamp a concept carries, across a
 /// `verified` value written as one mapping or as a list of them.
-fn newest_verified(frontmatter: &crate::frontmatter::Frontmatter) -> Option<String> {
+fn newest_verified(frontmatter: &Frontmatter) -> Option<String> {
     let value = frontmatter.get("verified")?;
     let mut newest: Option<&str> = None;
     match value {
@@ -89,7 +84,8 @@ fn newest_verified(frontmatter: &crate::frontmatter::Frontmatter) -> Option<Stri
 /// passed at the given stamp, in path order. A concept is stale
 /// when its `stale_after` date is earlier than the stamp's date.
 /// The stamp is the caller's, an RFC 3339 timestamp or a plain
-/// date, never a clock reading.
+/// date, never a clock reading. Only files inside the bundle's
+/// layers are concepts, so a root-level file is never reported.
 ///
 /// # Errors
 ///
@@ -104,7 +100,7 @@ pub fn staleness_report(root: &Path, at: &str) -> std::io::Result<Vec<StaleEntry
     let bundle = read_bundle(root);
     let mut stale: Vec<StaleEntry> = Vec::new();
     for file in &bundle.files {
-        if file.reserved {
+        if file.reserved || file.layer == Layer::Root {
             continue;
         }
         let Some(frontmatter) = &file.frontmatter else {
@@ -130,10 +126,11 @@ pub fn staleness_report(root: &Path, at: &str) -> std::io::Result<Vec<StaleEntry
 /// How a promotion ended.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Promotion {
-    /// The claim block and any supersession entry were written.
+    /// The claim block and any supersession upkeep were written.
     Promoted,
-    /// The target already carried the claim unchanged, so nothing
-    /// was written.
+    /// The target already carried the claim unchanged and the
+    /// supersession upkeep was already complete, so nothing was
+    /// written.
     AlreadyPresent,
 }
 
@@ -153,14 +150,14 @@ fn find_claim(bundle: &Bundle, layer: Layer, id: &str) -> Option<(Claim, String)
     None
 }
 
-/// Render a verbatim quote as a double-quoted scalar, escaping
-/// backslashes and double quotes. Quote sub-items always carry
-/// the quoted form, in the daily files the product converts and
-/// in the curated layer alike, because a quote is an excerpt
-/// whose exact wording is the evidence.
+/// Render a verbatim quote as a double-quoted scalar. Quote
+/// sub-items always carry the quoted form, in the daily files the
+/// product converts and in the curated layer alike, because a
+/// quote is an excerpt whose exact wording is the evidence. The
+/// escaping is the registry's own, so every control character the
+/// subset's parser resolves is escaped the same way everywhere.
 fn render_quote(text: &str) -> String {
-    let escaped = text.replace('\\', "\\\\").replace('"', "\\\"");
-    format!("\"{escaped}\"")
+    format!("\"{}\"", escape_quoted(text))
 }
 
 /// Render one claim block in the grammar the scanner reads, with
@@ -192,17 +189,36 @@ fn render_claim_block(claim: &Claim) -> Vec<String> {
 }
 
 /// Insert lines into a body after the line at the given zero-based
-/// index, keeping the document's own line ending and exactly one
-/// trailing newline.
+/// index. Existing lines are carried as raw slices of the input,
+/// endings included, so nothing outside the inserted lines is
+/// rewritten. The inserted lines use the document's own line
+/// ending, and a document that did not end with a newline gains
+/// one.
 fn insert_after(body: &str, at: usize, new_lines: &[String]) -> String {
-    let eol = if body.contains("\r\n") { "\r\n" } else { "\n" };
-    let lines: Vec<&str> = body.lines().collect();
-    let mut out: Vec<String> = lines[..=at].iter().map(ToString::to_string).collect();
-    out.extend(new_lines.iter().cloned());
-    out.extend(lines[at + 1..].iter().map(ToString::to_string));
-    let mut text = out.join(eol);
-    text.push_str(eol);
-    text
+    let eol = line_ending(body);
+    let segments: Vec<&str> = body.split_inclusive('\n').collect();
+    let mut out = String::new();
+    if segments.is_empty() {
+        for line in new_lines {
+            out.push_str(line);
+            out.push_str(eol);
+        }
+        return out;
+    }
+    let cut = (at + 1).min(segments.len());
+    out.push_str(&segments[..cut].concat());
+    if !out.ends_with('\n') {
+        out.push_str(eol);
+    }
+    for line in new_lines {
+        out.push_str(line);
+        out.push_str(eol);
+    }
+    out.push_str(&segments[cut..].concat());
+    if !out.ends_with('\n') {
+        out.push_str(eol);
+    }
+    out
 }
 
 /// The line index a new claim block is inserted after, the last
@@ -221,6 +237,50 @@ fn block_insert_point(body: &str) -> usize {
     at
 }
 
+/// Whether a line is the heading of a superseded claims section.
+fn is_superseded_heading(line: &str) -> bool {
+    line.starts_with('#') && line.to_lowercase().contains("superseded claims")
+}
+
+/// Append one claim block to a body after its last claim block.
+/// A body with no claim blocks but a superseded claims section
+/// takes the block before that section, never inside it. A body
+/// with neither takes the block at its end.
+fn append_claim_block(body: &str, claim: &Claim) -> String {
+    let block = render_claim_block(claim);
+    if !scan_claims(body).is_empty() {
+        return insert_after(body, block_insert_point(body), &block);
+    }
+    let eol = line_ending(body);
+    if let Some(heading) = body.lines().position(is_superseded_heading) {
+        let segments: Vec<&str> = body.split_inclusive('\n').collect();
+        let mut out = String::new();
+        out.push_str(&segments[..heading].concat());
+        let keep = out.trim_end_matches(['\r', '\n']).len();
+        out.truncate(keep);
+        if !out.is_empty() {
+            out.push_str(eol);
+            out.push_str(eol);
+        }
+        out.push_str(&block.join(eol));
+        out.push_str(eol);
+        out.push_str(eol);
+        out.push_str(&segments[heading..].concat());
+        if !out.ends_with('\n') {
+            out.push_str(eol);
+        }
+        return out;
+    }
+    let mut text = body.trim_end_matches(['\r', '\n']).to_owned();
+    if !text.is_empty() {
+        text.push_str(eol);
+        text.push_str(eol);
+    }
+    text.push_str(&block.join(eol));
+    text.push_str(eol);
+    text
+}
+
 /// Append the superseded claims section entry for one supersession
 /// to a body, creating the section at the end of the body when it
 /// has none. Returns the new body, or the body unchanged when the
@@ -232,7 +292,17 @@ fn append_section_entry(
     replacement: &str,
     date: &str,
     reason: &str,
-) -> Result<String, std::io::Error> {
+) -> std::io::Result<String> {
+    // The scanner reads the entry by splitting on the first
+    // occurrence of the words Replaced by, so a superseded text
+    // carrying those words itself cannot be recorded in this
+    // shape. Refuse rather than write an entry nothing can read
+    // back.
+    if old_text.contains(" Replaced by ") {
+        return Err(invalid(format!(
+            "the superseded claim {old} carries the words Replaced by in its own text, which the superseded claims section entry cannot represent"
+        )));
+    }
     for entry in section_entries_in(body) {
         if entry.old == old {
             if entry.replacement == replacement {
@@ -247,9 +317,7 @@ fn append_section_entry(
     let reason = reason.trim().trim_end_matches('.');
     let line = format!("- {old} {old_text} Replaced by {replacement} on {date}, {reason}.");
     let lines: Vec<&str> = body.lines().collect();
-    let section = lines.iter().position(|line| {
-        line.starts_with('#') && line.to_lowercase().contains("superseded claims")
-    });
+    let section = lines.iter().position(|line| is_superseded_heading(line));
     if let Some(heading) = section {
         let end = lines[heading + 1..]
             .iter()
@@ -261,7 +329,7 @@ fn append_section_entry(
             .unwrap_or(heading);
         return Ok(insert_after(body, last_content, &[line]));
     }
-    let eol = if body.contains("\r\n") { "\r\n" } else { "\n" };
+    let eol = line_ending(body);
     let mut text = body.trim_end_matches(['\r', '\n']).to_owned();
     text.push_str(eol);
     text.push_str(eol);
@@ -273,24 +341,80 @@ fn append_section_entry(
     Ok(text)
 }
 
+/// Give a body the `superseded-by` reverse link on its copy of the
+/// superseded claim, naming the replacement. Returns the body
+/// unchanged when the link is already there, and refuses when the
+/// copy already names a different replacement.
+fn with_reverse_link(body: &str, old: &str, new_id: &str) -> std::io::Result<String> {
+    let claims = scan_claims(body);
+    let Some(claim) = claims
+        .iter()
+        .find(|carried| carried.id.as_deref() == Some(old))
+    else {
+        return Ok(body.to_owned());
+    };
+    match &claim.superseded_by {
+        Some(existing) if existing == new_id => Ok(body.to_owned()),
+        Some(existing) => Err(invalid(format!(
+            "the curated copy of {old} already names {existing} as its replacement, so the reverse link is not this promotion's to write"
+        ))),
+        None => {
+            let lines: Vec<&str> = body.lines().collect();
+            let mut at = claim.line - 1;
+            while at + 1 < lines.len() && lines[at + 1].starts_with("  - ") {
+                at += 1;
+            }
+            let link = format!("  - superseded-by: {}", render_scalar(new_id));
+            Ok(insert_after(body, at, &[link]))
+        }
+    }
+}
+
+/// The reason a superseding promotion carries, checked as the
+/// one line the superseded claims section records. A reason that
+/// is missing, blank, or spans lines would corrupt or forge
+/// section entries, so it is refused before anything is written.
+fn checked_reason<'a>(claim: &Claim, reason: Option<&'a str>) -> std::io::Result<&'a str> {
+    let old = claim.supersedes.as_deref().unwrap_or_default();
+    let Some(reason) = reason else {
+        return Err(invalid(format!(
+            "the claim {} supersedes {old}, and a superseding promotion needs its one-line reason",
+            claim.id.as_deref().unwrap_or_default()
+        )));
+    };
+    let trimmed = reason.trim();
+    if trimmed.is_empty() || trimmed.contains(['\n', '\r']) {
+        return Err(invalid(
+            "a superseding promotion's reason is one non-empty line".to_owned(),
+        ));
+    }
+    Ok(trimmed)
+}
+
 /// Promote one claim from the daily layer into a named curated
 /// concept. The `target` is the curated concept's bundle-relative
 /// path. When the claim carries a supersedes link, `reason` is
-/// required and the target's superseded claims section gains the
-/// entry, dated by the daily file the claim lives in. The daily
-/// file is never touched, because the daily layer is append-only.
+/// required. The superseded claims section entry goes to the
+/// concept that holds the superseded claim, or to the target when
+/// the superseded claim was never promoted, dated by the daily
+/// file the claim lives in, and the superseded claim's curated
+/// copy gains its `superseded-by` reverse link. The daily file is
+/// never touched, because the daily layer is append-only. Every
+/// refusal is decided before any file is written.
 ///
 /// # Errors
 ///
 /// Returns a `NotFound` error when the claim, the claim it
 /// supersedes, or the target concept cannot be found, and an
 /// `InvalidInput` error when the target is not a curated concept,
-/// when the curated layer already carries the identity with
-/// different wording, when the claim carries a reverse link, when
-/// a superseding promotion is given no reason, or when the
-/// section already records the supersession for another
-/// replacement. Returns an I/O error when the target cannot be
-/// read or written.
+/// when the curated layer already carries the identity in another
+/// concept or with different wording, when the claim carries a
+/// reverse link, when a superseding promotion is given no usable
+/// one-line reason, when the superseded claim's text cannot be
+/// represented in a section entry, when its curated copy names a
+/// different replacement, or when a section already records the
+/// supersession for another replacement. Returns an I/O error
+/// when a file cannot be read or written.
 pub fn promote_claim(
     root: &Path,
     claim_id: &str,
@@ -318,10 +442,28 @@ pub fn promote_claim(
             "{target} is not a curated concept, and promotion lands only in the curated layer"
         )));
     }
-    if let Some(existing) = scan_claims(&target_file.body)
-        .into_iter()
-        .find(|carried| carried.id.as_deref() == Some(claim_id))
-    {
+    // The checker's duplication and drift rules span the whole
+    // curated layer, so the refusal does too. The identity carried
+    // by another concept refuses outright, and the identity carried
+    // by the target is compared for drift below.
+    let mut carried: Option<Claim> = None;
+    for file in &bundle.files {
+        if file.layer != Layer::Curated || file.reserved {
+            continue;
+        }
+        for other in scan_claims(&file.body) {
+            if other.id.as_deref() == Some(claim_id) {
+                if file.rel_path != target {
+                    return Err(invalid(format!(
+                        "the curated layer already carries {claim_id} in {}, and promotion into {target} would duplicate it",
+                        file.rel_path
+                    )));
+                }
+                carried = Some(other);
+            }
+        }
+    }
+    if let Some(existing) = &carried {
         let mut drift: Vec<&str> = Vec::new();
         if existing.text != claim.text {
             drift.push("text");
@@ -341,56 +483,82 @@ pub fn promote_claim(
                 drift.join(", ")
             )));
         }
-        // The claim itself is carried unchanged. A supersession
-        // entry the section is missing is still owed, so an
-        // interrupted earlier promotion completes here rather than
-        // reporting itself done.
-        if let Some(old) = &claim.supersedes {
-            let Some(reason) = reason else {
-                return Err(invalid(format!(
-                    "the claim {claim_id} supersedes {old}, and a superseding promotion needs its one-line reason"
-                )));
-            };
-            let completed =
-                complete_section_entry(&bundle, &target_file.body, &claim, &daily_rel, reason)?;
-            if completed != target_file.body {
-                write_body(root, target, &completed)?;
-                return Ok(Promotion::Promoted);
-            }
+    }
+
+    let mut target_body: Option<String> = None;
+    if carried.is_none() {
+        target_body = Some(append_claim_block(&target_file.body, &claim));
+    }
+    let upkeep = plan_supersession(
+        &bundle,
+        &claim,
+        &daily_rel,
+        target,
+        target_file,
+        target_body,
+        reason,
+    )?;
+
+    let mut wrote = false;
+    if let Some(body) = &upkeep.target_body
+        && body != &target_file.body
+    {
+        write_body(root, target, body)?;
+        wrote = true;
+    }
+    if let (Some(body), Some(rel)) = (&upkeep.holder_body, &upkeep.holder_rel) {
+        let holder_file = bundle
+            .files
+            .iter()
+            .find(|file| file.rel_path == *rel)
+            .map(|file| &file.body);
+        if holder_file != Some(body) {
+            write_body(root, rel, body)?;
+            wrote = true;
         }
-        return Ok(Promotion::AlreadyPresent);
     }
-    let mut body = append_claim_block(&target_file.body, &claim);
-    if claim.supersedes.is_some() {
-        let Some(reason) = reason else {
-            return Err(invalid(format!(
-                "the claim {claim_id} supersedes {}, and a superseding promotion needs its one-line reason",
-                claim.supersedes.as_deref().unwrap_or_default()
-            )));
-        };
-        body = complete_section_entry(&bundle, &body, &claim, &daily_rel, reason)?;
+    if wrote {
+        Ok(Promotion::Promoted)
+    } else {
+        Ok(Promotion::AlreadyPresent)
     }
-    write_body(root, target, &body)?;
-    Ok(Promotion::Promoted)
 }
 
-/// Give a body the superseded claims section entry for the
-/// supersession a claim carries, dated by the daily file the
-/// claim lives in. The superseded claim's own text is read from
-/// wherever in the bundle it lives, daily first, then curated.
-fn complete_section_entry(
+/// The new bodies a promotion's supersession upkeep produces, the
+/// target's and the superseded claim's holder's, either of which
+/// may be absent when that file needs no change.
+struct Upkeep {
+    target_body: Option<String>,
+    holder_body: Option<String>,
+    holder_rel: Option<String>,
+}
+
+/// Plan the supersession upkeep for one promotion, the reverse
+/// link and the superseded claims section entry. The concept
+/// holding the superseded claim's curated copy is the entry's home
+/// and the reverse link's home. When the old claim was never
+/// promoted, the entry goes to the target, which is where the
+/// registry has always read it for a daily-only claim. All of the
+/// upkeep's refusals are decided here, before any file is written.
+fn plan_supersession(
     bundle: &Bundle,
-    body: &str,
     claim: &Claim,
     daily_rel: &str,
-    reason: &str,
-) -> std::io::Result<String> {
+    target: &str,
+    target_file: &crate::bundle::ConceptFile,
+    target_body: Option<String>,
+    reason: Option<&str>,
+) -> std::io::Result<Upkeep> {
+    let mut upkeep = Upkeep {
+        target_body,
+        holder_body: None,
+        holder_rel: None,
+    };
     let Some(old) = &claim.supersedes else {
-        return Ok(body.to_owned());
+        return Ok(upkeep);
     };
-    let Some(new_id) = &claim.id else {
-        return Ok(body.to_owned());
-    };
+    let claim_id = claim.id.as_deref().unwrap_or_default();
+    let reason = checked_reason(claim, reason)?;
     let old_claim =
         find_claim(bundle, Layer::Daily, old).or_else(|| find_claim(bundle, Layer::Curated, old));
     let Some((old_claim, _)) = old_claim else {
@@ -405,7 +573,45 @@ fn complete_section_entry(
         .strip_suffix(".md")
         .unwrap_or(daily_rel)
         .to_owned();
-    append_section_entry(body, old, &old_claim.text, new_id, &date, reason)
+    let holder = bundle.files.iter().find(|file| {
+        file.layer == Layer::Curated
+            && !file.reserved
+            && scan_claims(&file.body)
+                .iter()
+                .any(|carried| carried.id.as_deref() == Some(old.as_str()))
+    });
+    match holder {
+        Some(holder_file) if holder_file.rel_path != target => {
+            let mut body = with_reverse_link(&holder_file.body, old, claim_id)?;
+            body = append_section_entry(&body, old, &old_claim.text, claim_id, &date, reason)?;
+            upkeep.holder_body = Some(body);
+            upkeep.holder_rel = Some(holder_file.rel_path.clone());
+        }
+        Some(_) => {
+            let base = upkeep
+                .target_body
+                .take()
+                .unwrap_or_else(|| target_file.body.clone());
+            let mut body = with_reverse_link(&base, old, claim_id)?;
+            body = append_section_entry(&body, old, &old_claim.text, claim_id, &date, reason)?;
+            upkeep.target_body = Some(body);
+        }
+        None => {
+            let base = upkeep
+                .target_body
+                .take()
+                .unwrap_or_else(|| target_file.body.clone());
+            upkeep.target_body = Some(append_section_entry(
+                &base,
+                old,
+                &old_claim.text,
+                claim_id,
+                &date,
+                reason,
+            )?);
+        }
+    }
+    Ok(upkeep)
 }
 
 /// Write a concept's new body under its existing frontmatter,
@@ -425,22 +631,4 @@ fn write_body(root: &Path, target: &str, body: &str) -> std::io::Result<()> {
     fs::write(&temp, out)?;
     fs::rename(&temp, &target_path)?;
     Ok(())
-}
-
-/// Append one claim block to a body after its last claim block,
-/// or at the end of the body when it carries none.
-fn append_claim_block(body: &str, claim: &Claim) -> String {
-    let block = render_claim_block(claim);
-    if scan_claims(body).is_empty() {
-        let eol = if body.contains("\r\n") { "\r\n" } else { "\n" };
-        let mut text = body.trim_end_matches(['\r', '\n']).to_owned();
-        if !text.is_empty() {
-            text.push_str(eol);
-            text.push_str(eol);
-        }
-        text.push_str(&block.join(eol));
-        text.push_str(eol);
-        return text;
-    }
-    insert_after(body, block_insert_point(body), &block)
 }

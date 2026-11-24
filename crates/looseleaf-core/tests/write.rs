@@ -7,7 +7,6 @@
 //! to the same rules.
 
 use std::fs;
-use std::path::{Path, PathBuf};
 
 use looseleaf_core::bundle::read_bundle;
 use looseleaf_core::check_bundle;
@@ -17,33 +16,12 @@ use looseleaf_core::write::upsert_frontmatter;
 
 const STAMP: &str = "2026-11-02T00:00:00Z";
 
-fn clean_fixture() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("clean")
-}
+mod common;
 
-fn copy_dir(from: &Path, to: &Path) {
-    fs::create_dir_all(to).expect("create fixture copy");
-    for entry in fs::read_dir(from).expect("read fixture dir") {
-        let entry = entry.expect("fixture entry");
-        let target = to.join(entry.file_name());
-        if entry.path().is_dir() {
-            copy_dir(&entry.path(), &target);
-        } else {
-            fs::copy(entry.path(), &target).expect("copy fixture file");
-        }
-    }
-}
+use common::clean_fixture;
 
 fn fixture_copy(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("looseleaf-write-{name}-{}", std::process::id()));
-    if dir.exists() {
-        fs::remove_dir_all(&dir).expect("clear old fixture copy");
-    }
-    copy_dir(&clean_fixture(), &dir);
-    dir
+    common::fixture_copy("write", name)
 }
 
 #[test]

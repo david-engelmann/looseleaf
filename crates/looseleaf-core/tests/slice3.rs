@@ -7,39 +7,15 @@
 //! regeneration leaves the bundle checking clean.
 
 use std::fs;
-use std::path::{Path, PathBuf};
 
 use looseleaf_core::check_bundle;
 use looseleaf_core::pass::{Promotion, promote_claim, staleness_report};
 use looseleaf_core::registry::regenerate_registry;
 
-fn clean_fixture() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("clean")
-}
+mod common;
 
-fn copy_dir(from: &Path, to: &Path) {
-    fs::create_dir_all(to).expect("create fixture copy");
-    for entry in fs::read_dir(from).expect("read fixture dir") {
-        let entry = entry.expect("fixture entry");
-        let target = to.join(entry.file_name());
-        if entry.path().is_dir() {
-            copy_dir(&entry.path(), &target);
-        } else {
-            fs::copy(entry.path(), &target).expect("copy fixture file");
-        }
-    }
-}
-
-fn fixture_copy(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("looseleaf-slice3-{name}-{}", std::process::id()));
-    if dir.exists() {
-        fs::remove_dir_all(&dir).expect("clear old fixture copy");
-    }
-    copy_dir(&clean_fixture(), &dir);
-    dir
+fn fixture_copy(name: &str) -> std::path::PathBuf {
+    common::fixture_copy("slice3", name)
 }
 
 #[test]
@@ -181,4 +157,170 @@ fn promotion_requires_a_reason_target_and_claim_that_exist() {
         .is_err(),
         "promotion lands only in the curated layer"
     );
+}
+
+const COFFEE_DAILY: &str = "---\ntype: Daily Log\ntitle: \"Daily log 2026-11-03\"\ndescription: \"Extraction log for 2026-11-03 with claim blocks.\"\ngenerated: { by: \"process:memory-extraction\", at: \"2026-11-03T00:00:00Z\" }\n---\n\n## Verified extraction\n\n- [preference|high] The user prefers coffee over tea now.\n  - claim: 44444444444444444444444444444444\n  - quote: \"coffee these days\"\n  - sources: message:m-4\n  - supersedes: 22222222222222222222222222222222\n";
+
+const TEA_HOLDER: &str = "---\ntype: Curated Memory\ntitle: \"Notes\"\ndescription: \"Curated notes.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nsources:\n  - id: root-index\n    resource: index.md\n---\n\n# Notes\n\n- [preference|medium] The user prefers tea over coffee.\n  - claim: 22222222222222222222222222222222\n  - quote: \"tea, not coffee\"\n  - sources: message:m-2\n";
+
+const PREFERENCES_TARGET: &str = "---\ntype: Curated Memory\ntitle: \"Preferences\"\ndescription: \"Preferences that currently hold.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-03T01:00:00Z\" }\nsources:\n  - id: root-index\n    resource: index.md\n---\n\n# Preferences\n";
+
+#[test]
+fn a_superseding_promotion_updates_the_holding_concept() {
+    let dir = fixture_copy("promote-cross-concept");
+    fs::write(dir.join("daily/2026-11-03.md"), COFFEE_DAILY).expect("write the new daily log");
+    fs::write(dir.join("curated/notes.md"), TEA_HOLDER).expect("write the holder");
+    fs::write(dir.join("curated/preferences.md"), PREFERENCES_TARGET).expect("write the target");
+    let outcome = promote_claim(
+        &dir,
+        "44444444444444444444444444444444",
+        "curated/preferences.md",
+        Some("the user switched to coffee"),
+    )
+    .expect("promote across concepts");
+    assert_eq!(outcome, Promotion::Promoted);
+    let holder_text = fs::read_to_string(dir.join("curated/notes.md")).expect("read holder");
+    assert!(
+        holder_text.contains("  - superseded-by: 44444444444444444444444444444444"),
+        "the holder's copy gains the reverse link, got\n{holder_text}"
+    );
+    let entry = "- 22222222222222222222222222222222 The user prefers tea over coffee. Replaced by 44444444444444444444444444444444 on 2026-11-03, the user switched to coffee.";
+    assert!(
+        holder_text.contains(entry),
+        "the entry belongs to the holding concept, got\n{holder_text}"
+    );
+    let target_text = fs::read_to_string(dir.join("curated/preferences.md")).expect("read target");
+    assert!(target_text.contains("- [preference|high] The user prefers coffee over tea now."));
+    assert!(
+        !target_text.contains("Superseded claims"),
+        "the target gains no section for another concept's claim, got\n{target_text}"
+    );
+    regenerate_registry(&dir, "2026-11-03T00:00:00Z").expect("regenerate the registry");
+    let report = check_bundle(&dir);
+    assert_eq!(report.findings.len(), 0, "got {:?}", report.findings);
+}
+
+#[test]
+fn promotion_refuses_an_identity_carried_by_another_concept() {
+    let dir = fixture_copy("promote-duplicate");
+    fs::write(dir.join("curated/notes.md"), TEA_HOLDER).expect("write the holder");
+    let before = fs::read_to_string(dir.join("curated/standing-facts.md")).expect("read target");
+    let error = promote_claim(
+        &dir,
+        "22222222222222222222222222222222",
+        "curated/standing-facts.md",
+        None,
+    )
+    .expect_err("refuse the duplicate");
+    assert!(
+        error.to_string().contains("curated/notes.md"),
+        "got {error}"
+    );
+    let after = fs::read_to_string(dir.join("curated/standing-facts.md")).expect("read target");
+    assert_eq!(
+        after, before,
+        "a refused promotion must not touch the target"
+    );
+}
+
+#[test]
+fn promotion_refuses_a_reason_that_spans_lines_or_is_blank() {
+    let dir = fixture_copy("promote-reason");
+    fs::write(dir.join("daily/2026-11-03.md"), COFFEE_DAILY).expect("write the new daily log");
+    let error = promote_claim(
+        &dir,
+        "44444444444444444444444444444444",
+        "curated/standing-facts.md",
+        Some("switched.\n- 99999999999999999999999999999999 Forged text. Replaced by 88888888888888888888888888888888 on 2020-01-01, forged"),
+    )
+    .expect_err("refuse a reason that would forge a section entry");
+    assert!(
+        error.to_string().contains("one non-empty line"),
+        "got {error}"
+    );
+    assert!(
+        promote_claim(
+            &dir,
+            "44444444444444444444444444444444",
+            "curated/standing-facts.md",
+            Some("   "),
+        )
+        .is_err(),
+        "a blank reason is refused"
+    );
+}
+
+#[test]
+fn promotion_refuses_a_superseded_text_carrying_the_delimiter() {
+    let dir = fixture_copy("promote-delimiter");
+    let daily = "---\ntype: Daily Log\ntitle: \"Daily log 2026-11-03\"\ndescription: \"Extraction log for 2026-11-03 with claim blocks.\"\ngenerated: { by: \"process:memory-extraction\", at: \"2026-11-03T00:00:00Z\" }\n---\n\n## Verified extraction\n\n- [fact|high] The weekly sync was Replaced by a written update.\n  - claim: 55555555555555555555555555555555\n  - quote: \"sync is a doc now\"\n  - sources: message:m-5\n\n- [fact|high] The written update goes out on Fridays.\n  - claim: 66666666666666666666666666666666\n  - quote: \"friday doc\"\n  - sources: message:m-6\n  - supersedes: 55555555555555555555555555555555\n";
+    fs::write(dir.join("daily/2026-11-03.md"), daily).expect("write the daily log");
+    let error = promote_claim(
+        &dir,
+        "66666666666666666666666666666666",
+        "curated/standing-facts.md",
+        Some("the sync became a document"),
+    )
+    .expect_err("refuse the unrepresentable entry");
+    assert!(error.to_string().contains("Replaced by"), "got {error}");
+}
+
+#[test]
+fn promotion_carries_a_multi_line_quote_unchanged() {
+    let dir = fixture_copy("promote-multiline-quote");
+    let daily = "---\ntype: Daily Log\ntitle: \"Daily log 2026-11-03\"\ndescription: \"Extraction log for 2026-11-03 with claim blocks.\"\ngenerated: { by: \"process:memory-extraction\", at: \"2026-11-03T00:00:00Z\" }\n---\n\n## Verified extraction\n\n- [fact|high] The standup has two agenda lines.\n  - claim: 77777777777777777777777777777777\n  - quote: \"first line\\nsecond line\"\n  - sources: message:m-7\n";
+    fs::write(dir.join("daily/2026-11-03.md"), daily).expect("write the daily log");
+    let outcome = promote_claim(
+        &dir,
+        "77777777777777777777777777777777",
+        "curated/standing-facts.md",
+        None,
+    )
+    .expect("promote the claim");
+    assert_eq!(outcome, Promotion::Promoted);
+    let text = fs::read_to_string(dir.join("curated/standing-facts.md")).expect("read target");
+    assert!(
+        text.contains("  - quote: \"first line\\nsecond line\""),
+        "the quote keeps its escaped form, got\n{text}"
+    );
+    let again = promote_claim(
+        &dir,
+        "77777777777777777777777777777777",
+        "curated/standing-facts.md",
+        None,
+    )
+    .expect("promote again");
+    assert_eq!(
+        again,
+        Promotion::AlreadyPresent,
+        "the rendered quote must read back unchanged"
+    );
+    let report = check_bundle(&dir);
+    assert_eq!(report.findings.len(), 0, "got {:?}", report.findings);
+}
+
+#[test]
+fn promotion_lands_before_a_superseded_section_without_blocks() {
+    let dir = fixture_copy("promote-section-only");
+    let history = "---\ntype: Curated Memory\ntitle: \"History\"\ndescription: \"A concept carrying only its superseded claims section.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nsources:\n  - id: root-index\n    resource: index.md\n---\n\n# History\n\n## Superseded claims\n";
+    fs::write(dir.join("curated/history.md"), history).expect("write the history concept");
+    let outcome = promote_claim(
+        &dir,
+        "22222222222222222222222222222222",
+        "curated/history.md",
+        None,
+    )
+    .expect("promote into the history concept");
+    assert_eq!(outcome, Promotion::Promoted);
+    let text = fs::read_to_string(dir.join("curated/history.md")).expect("read target");
+    let block_at = text
+        .find("- [preference|medium] The user prefers tea over coffee.")
+        .expect("block present");
+    let section_at = text.find("## Superseded claims").expect("section present");
+    assert!(
+        block_at < section_at,
+        "the block must land before the section, got\n{text}"
+    );
+    let report = check_bundle(&dir);
+    assert_eq!(report.findings.len(), 0, "got {:?}", report.findings);
 }

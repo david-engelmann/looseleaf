@@ -37,6 +37,26 @@ pub fn render_scalar(text: &str) -> String {
     out
 }
 
+/// The line ending a document uses, CRLF when it carries any and
+/// LF otherwise. Shared by every writer that inserts lines into an
+/// existing body, so the rule cannot drift between them.
+pub(crate) fn line_ending(text: &str) -> &'static str {
+    if text.contains("\r\n") { "\r\n" } else { "\n" }
+}
+
+/// An `InvalidInput` error with the given message. The writer
+/// modules share this constructor so a caller distinguishing on
+/// error kind gets the same answer from each of them.
+pub(crate) fn invalid_input(message: String) -> std::io::Error {
+    std::io::Error::new(std::io::ErrorKind::InvalidInput, message)
+}
+
+/// A `NotFound` error with the given message, the sibling of
+/// `invalid_input` for names a bundle does not carry.
+pub(crate) fn not_found(message: String) -> std::io::Error {
+    std::io::Error::new(std::io::ErrorKind::NotFound, message)
+}
+
 fn plain_safe(text: &str) -> bool {
     if text.is_empty() || text.trim() != text {
         return false;

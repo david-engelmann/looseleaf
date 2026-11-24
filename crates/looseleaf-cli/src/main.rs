@@ -22,6 +22,8 @@ use std::ffi::OsString;
 use std::path::Path;
 use std::process::ExitCode;
 
+use looseleaf_core::logs::LogScope;
+
 fn main() -> ExitCode {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let Some(first) = args.first() else {
@@ -166,19 +168,15 @@ fn run_append_log(args: &[OsString]) -> ExitCode {
     };
     let scope = if args.len() == 7 {
         match args[6].to_str() {
-            Some("curated") => {
-                looseleaf_core::logs::LogScope::Layer(looseleaf_core::bundle::Layer::Curated)
-            }
-            Some("daily") => {
-                looseleaf_core::logs::LogScope::Layer(looseleaf_core::bundle::Layer::Daily)
-            }
+            Some("curated") => LogScope::Curated,
+            Some("daily") => LogScope::Daily,
             _ => {
                 eprintln!("--layer names curated or daily, the layers the profile gives a log");
                 return ExitCode::from(2);
             }
         }
     } else {
-        looseleaf_core::logs::LogScope::Root
+        LogScope::Root
     };
     match looseleaf_core::logs::append_log(Path::new(&args[0]), scope, date, entry) {
         Ok(rel) => {

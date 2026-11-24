@@ -7,40 +7,18 @@
 //! checks clean after each mechanical edit.
 
 use std::fs;
-use std::path::{Path, PathBuf};
 
-use looseleaf_core::bundle::{Layer, read_bundle};
+use looseleaf_core::bundle::read_bundle;
 use looseleaf_core::check_bundle;
 use looseleaf_core::indexes::{regenerate_root_index, render_root_index};
 use looseleaf_core::logs::{LogScope, append_log};
 
-fn clean_fixture() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("clean")
-}
+mod common;
 
-fn copy_dir(from: &Path, to: &Path) {
-    fs::create_dir_all(to).expect("create fixture copy");
-    for entry in fs::read_dir(from).expect("read fixture dir") {
-        let entry = entry.expect("fixture entry");
-        let target = to.join(entry.file_name());
-        if entry.path().is_dir() {
-            copy_dir(&entry.path(), &target);
-        } else {
-            fs::copy(entry.path(), &target).expect("copy fixture file");
-        }
-    }
-}
+use common::clean_fixture;
 
 fn fixture_copy(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("looseleaf-slice2-{name}-{}", std::process::id()));
-    if dir.exists() {
-        fs::remove_dir_all(&dir).expect("clear old fixture copy");
-    }
-    copy_dir(&clean_fixture(), &dir);
-    dir
+    common::fixture_copy("slice2", name)
 }
 
 #[test]
@@ -133,7 +111,7 @@ fn a_layer_append_lands_in_the_layer_log() {
     let dir = fixture_copy("log-layer");
     let rel = append_log(
         &dir,
-        LogScope::Layer(Layer::Daily),
+        LogScope::Daily,
         "2026-11-03",
         "Appended the 2026-11-03 log.",
     )
@@ -149,13 +127,8 @@ fn a_layer_append_lands_in_the_layer_log() {
 fn a_missing_log_is_created_with_its_heading() {
     let dir = fixture_copy("log-create");
     fs::remove_file(dir.join("curated/log.md")).expect("remove curated log");
-    let rel = append_log(
-        &dir,
-        LogScope::Layer(Layer::Curated),
-        "2026-11-03",
-        "Promoted a claim.",
-    )
-    .expect("append creates the log");
+    let rel = append_log(&dir, LogScope::Curated, "2026-11-03", "Promoted a claim.")
+        .expect("append creates the log");
     assert_eq!(rel, "curated/log.md");
     let log = fs::read_to_string(dir.join("curated/log.md")).expect("read created log");
     assert_eq!(
@@ -165,13 +138,57 @@ fn a_missing_log_is_created_with_its_heading() {
 }
 
 #[test]
-fn appends_reject_bad_dates_entries_and_scopes() {
+fn appends_reject_bad_dates_and_entries() {
     let dir = fixture_copy("log-reject");
     assert!(append_log(&dir, LogScope::Root, "2026-13-40", "Nope.").is_err());
     assert!(append_log(&dir, LogScope::Root, "2026-11-03", "two\nlines").is_err());
     assert!(append_log(&dir, LogScope::Root, "2026-11-03", "  ").is_err());
+}
+
+#[test]
+fn a_bom_root_index_keeps_its_bom_through_regeneration() {
+    let dir = fixture_copy("root-bom");
+    let original = fs::read_to_string(dir.join("index.md")).expect("read root index");
+    let bommed = format!(
+        "\u{feff}{}",
+        original.replace("- 1 concept", "- 9 concepts")
+    );
+    fs::write(dir.join("index.md"), &bommed).expect("write bom root index");
+    let written = regenerate_root_index(&dir).expect("regenerate");
+    assert_eq!(written.as_deref(), Some("index.md"));
+    let after = fs::read_to_string(dir.join("index.md")).expect("read regenerated index");
+    assert_eq!(after, format!("\u{feff}{original}"));
+}
+
+#[test]
+fn an_append_preserves_a_crlf_line_in_an_lf_log() {
+    let dir = fixture_copy("log-crlf");
+    fs::write(
+        dir.join("log.md"),
+        "# Bundle log\n\n## 2026-11-02\r\n\n- First entry.\n",
+    )
+    .expect("write mixed log");
+    append_log(&dir, LogScope::Root, "2026-11-02", "Second entry.").expect("append");
+    let log = fs::read_to_string(dir.join("log.md")).expect("read log");
     assert!(
-        append_log(&dir, LogScope::Layer(Layer::People), "2026-11-03", "Nope.").is_err(),
-        "the profile gives the people layer no log"
+        log.contains("## 2026-11-02\r\n\n- First entry.\n"),
+        "the existing lines must survive byte for byte, got\n{log}"
+    );
+    assert!(log.contains("- Second entry."), "got\n{log}");
+}
+
+#[test]
+fn an_append_joins_after_the_last_entry_not_trailing_prose() {
+    let dir = fixture_copy("log-join-entry");
+    fs::write(
+        dir.join("log.md"),
+        "# Bundle log\n\n## 2026-11-02\n\n- First entry.\nA note after the entries.\n",
+    )
+    .expect("write log");
+    append_log(&dir, LogScope::Root, "2026-11-02", "Second entry.").expect("append");
+    let log = fs::read_to_string(dir.join("log.md")).expect("read log");
+    assert_eq!(
+        log,
+        "# Bundle log\n\n## 2026-11-02\n\n- First entry.\n- Second entry.\nA note after the entries.\n"
     );
 }
