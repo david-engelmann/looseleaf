@@ -106,7 +106,7 @@ fn promotion_refuses_drift_and_writes_nothing() {
     let target = dir.join("curated/standing-facts.md");
     let text = fs::read_to_string(&target).expect("read target");
     let drifted = text.replace("standup moves to 10:00", "standup moved to ten");
-    fs::write(&target, drifted).expect("drift the curated quote");
+    fs::write(&target, &drifted).expect("drift the curated quote");
     let error = promote_claim(
         &dir,
         "33333333333333333333333333333333",
