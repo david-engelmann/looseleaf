@@ -169,7 +169,7 @@ pub fn regenerate_indexes(root: &Path) -> std::io::Result<Vec<String>> {
 /// and the body that follows it. Returns `None` when the document
 /// carries no frontmatter block. The span is a slice of the input,
 /// so a renderer can carry it into its output byte for byte.
-fn frontmatter_span(text: &str) -> Option<(&str, &str)> {
+pub(crate) fn frontmatter_span(text: &str) -> Option<(&str, &str)> {
     let text = text.strip_prefix('\u{feff}').unwrap_or(text);
     let mut offset = 0;
     let mut lines = text.split_inclusive('\n');

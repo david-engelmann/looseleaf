@@ -23,6 +23,7 @@ pub mod claim;
 pub mod frontmatter;
 pub mod indexes;
 pub mod logs;
+pub mod pass;
 pub mod registry;
 pub mod write;
 
