@@ -153,6 +153,16 @@ fn find_claim(bundle: &Bundle, layer: Layer, id: &str) -> Option<(Claim, String)
     None
 }
 
+/// Render a verbatim quote as a double-quoted scalar, escaping
+/// backslashes and double quotes. Quote sub-items always carry
+/// the quoted form, in the daily files the product converts and
+/// in the curated layer alike, because a quote is an excerpt
+/// whose exact wording is the evidence.
+fn render_quote(text: &str) -> String {
+    let escaped = text.replace('\\', "\\\\").replace('"', "\\\"");
+    format!("\"{escaped}\"")
+}
+
 /// Render one claim block in the grammar the scanner reads, with
 /// the identity, quote and sources carried unchanged.
 fn render_claim_block(claim: &Claim) -> Vec<String> {
@@ -164,7 +174,7 @@ fn render_claim_block(claim: &Claim) -> Vec<String> {
         lines.push(format!("  - claim: {}", render_scalar(id)));
     }
     if let Some(quote) = &claim.quote {
-        lines.push(format!("  - quote: {}", render_scalar(quote)));
+        lines.push(format!("  - quote: {}", render_quote(quote)));
     }
     if !claim.sources.is_empty() {
         let joined = claim

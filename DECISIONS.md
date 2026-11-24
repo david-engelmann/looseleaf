@@ -357,3 +357,13 @@ is the superseded claim's own text, read from wherever in the
 bundle it lives. The daily file is never touched, because the
 daily layer is append-only, and a daily claim carrying a reverse
 link is refused outright, since the daily layer never holds one.
+
+A promoted block renders its quote sub-item always as a
+double-quoted scalar, the shape every quote in the daily files
+and the curated layer already carries, because a quote is an
+excerpt whose exact wording is the evidence and the quoted form
+keeps a comma or a colon inside it unambiguous to any reader.
+The first hosted run of this slice caught the renderer using the
+frontmatter writer's plain form for a quote containing a comma,
+which parses back correctly under this product's own scanner and
+still broke the established shape.
