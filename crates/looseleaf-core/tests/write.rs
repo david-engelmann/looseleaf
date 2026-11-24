@@ -20,7 +20,7 @@ mod common;
 
 use common::clean_fixture;
 
-fn fixture_copy(name: &str) -> PathBuf {
+fn fixture_copy(name: &str) -> std::path::PathBuf {
     common::fixture_copy("write", name)
 }
 
