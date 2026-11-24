@@ -295,6 +295,7 @@ fn promotion_carries_a_multi_line_quote_unchanged() {
         Promotion::AlreadyPresent,
         "the rendered quote must read back unchanged"
     );
+    regenerate_registry(&dir, "2026-11-03T00:00:00Z").expect("regenerate the registry");
     let report = check_bundle(&dir);
     assert_eq!(report.findings.len(), 0, "got {:?}", report.findings);
 }

@@ -262,7 +262,6 @@ pub fn render_root_index(bundle: &Bundle, current: &str) -> Option<String> {
     }
     if !bullets.is_empty() {
         out.push_str(eol);
-        out.push_str(eol);
         out.push_str(&bullets.join(eol));
     }
     out.push_str(eol);
