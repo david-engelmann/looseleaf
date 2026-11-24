@@ -367,3 +367,94 @@ The first hosted run of this slice caught the renderer using the
 frontmatter writer's plain form for a quote containing a comma,
 which parses back correctly under this product's own scanner and
 still broke the established shape.
+
+## D19. Phase 2 checkpoint dispositions
+
+The Phase 2 checkpoint ran the three reviews over Slices 1 to 3,
+a red-team re-audit, a spec fidelity review and a standards
+review, plus the owner's own verification. What they found and
+what was done about it is recorded here. Two findings were
+material. The rest were real and are fixed or dispositioned
+below.
+
+D18 placed the superseded claims section entry in the promotion
+target. The profile places it in the concept that holds the
+superseded claim, and the checker enforces the profile, so a
+promotion whose replacement landed in a different concept than
+the superseded claim reported success and left the bundle
+failing its own check. D18's placement sentence is corrected by
+this entry. The entry now goes to the concept holding the
+superseded claim's curated copy, and to the target only when the
+superseded claim was never promoted, which is the case the
+registry has always read for a daily-only claim. The profile
+also assigns the superseded-by reverse link to the promotion
+moment, and promotion now writes it onto the superseded claim's
+curated copy in the same pass, refusing when that copy already
+names a different replacement.
+
+Promotion's drift refusal was scoped to the named target, while
+the checker's duplication and drift rules span the whole curated
+layer. Promotion now scans the layer. An identity carried by
+another concept refuses outright, and the target's own copy is
+compared as before. The comparison still covers the supersedes
+link alongside text, quote and sources, a deliberate superset of
+the checker's wording-only drift rule, because a carried copy
+whose chain link differs is not the same claim.
+
+The writers never write through a symbolic link. The bundle
+walker does not follow one, so a layer directory that is a link
+holds no concepts the tool can see, and the index and log
+writers now refuse it instead of landing files outside the
+bundle. Promotion targets come from the walker and were never
+exposed.
+
+The promotion reason is validated as one non-empty line before
+anything is written, because it lands inside a section entry the
+registry harvests, and a reason spanning lines could forge an
+entry. A superseded claim whose own text carries the words
+Replaced by cannot be recorded in the section's line shape,
+which the scanner splits on those words, so that promotion is
+refused with the cause named rather than written unreadably.
+
+The quote renderer's escaping is now the registry's own shared
+escaping, after the review found the promotion copy escaped only
+backslashes and quotes and would have written a multi-line quote
+raw across lines. Body edits in the index, log and pass writers
+now carry existing lines as raw slices with their own endings,
+matching the frontmatter writer's preservation discipline, and a
+leading byte order mark rides inside the frontmatter span, so
+regeneration no longer strips it. The root index renderer
+preserves the body up to and including its heading as a raw
+slice, and finds the heading outside fenced code blocks. A log
+append on an equal date joins after the section's last entry
+rather than its last content line. A promoted block landing in a
+concept that carries a superseded claims section but no claim
+blocks goes before the section, never inside it. Layer index
+links name the path inside the layer directory, so a concept in
+a nested subdirectory points at its own file.
+
+Staleness reporting now covers only files inside the bundle's
+layers, since a root-level file is not a concept. The slice
+scope's phrase about concepts carrying a verified entry and
+D18's report rule conflicted, and D18's rule stands, the report
+names the newest verification a concept carries and says never
+when it carries none. A malformed stale_after no longer vanishes
+in silence, because the checker now warns on it under
+FM_STALE_AFTER and the profile states the shape the value
+carries.
+
+On the standards axis, the integration test harness is extracted
+into a shared module after three phases of copies, the log scope
+type names exactly the three logs the profile gives, the error
+constructors and the line ending rule are shared from the writer
+module, and the crate documentation names the full writer
+surface. Two review observations are accepted without a change.
+The write window in promotion pairs a body computed from the
+bundle snapshot with a frontmatter span re-read at write time,
+and a host edit inside that window is the contract's concern,
+since the host is the bundle's only other writer. The synthesis
+contract speaks of promotion into an entity page while the
+profile confines claim blocks to the daily and curated layers,
+and the implementation follows the profile. The contract phrase
+is flagged here for the human gate that owns contract changes,
+not amended by this pass.

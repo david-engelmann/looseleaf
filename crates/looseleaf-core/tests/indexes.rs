@@ -6,39 +6,17 @@
 //! bundle is clean.
 
 use std::fs;
-use std::path::{Path, PathBuf};
 
 use looseleaf_core::bundle::{Layer, read_bundle};
 use looseleaf_core::check_bundle;
 use looseleaf_core::indexes::{regenerate_indexes, render_layer_index};
 
-fn clean_fixture() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("clean")
-}
+mod common;
 
-fn copy_dir(from: &Path, to: &Path) {
-    fs::create_dir_all(to).expect("create fixture copy");
-    for entry in fs::read_dir(from).expect("read fixture dir") {
-        let entry = entry.expect("fixture entry");
-        let target = to.join(entry.file_name());
-        if entry.path().is_dir() {
-            copy_dir(&entry.path(), &target);
-        } else {
-            fs::copy(entry.path(), &target).expect("copy fixture file");
-        }
-    }
-}
+use common::clean_fixture;
 
-fn fixture_copy(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("looseleaf-indexes-{name}-{}", std::process::id()));
-    if dir.exists() {
-        fs::remove_dir_all(&dir).expect("clear old fixture copy");
-    }
-    copy_dir(&clean_fixture(), &dir);
-    dir
+fn fixture_copy(name: &str) -> std::path::PathBuf {
+    common::fixture_copy("indexes", name)
 }
 
 #[test]
@@ -100,4 +78,46 @@ fn an_empty_layer_gets_a_heading_and_no_bullets() {
     assert_eq!(written, ["topics/index.md"]);
     let index = fs::read_to_string(dir.join("topics/index.md")).expect("read index");
     assert_eq!(index, "# Topics\n");
+}
+
+#[test]
+fn a_nested_concept_links_by_its_path_inside_the_layer() {
+    let dir = fixture_copy("index-nested");
+    let nested = dir.join("curated/sub");
+    fs::create_dir_all(&nested).expect("create nested dir");
+    fs::write(
+        nested.join("inner.md"),
+        "---\ntype: Curated Memory\ntitle: \"Inner note\"\ndescription: \"A nested concept.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nsources:\n  - id: root-index\n    resource: index.md\n---\n\n# Inner note\n",
+    )
+    .expect("write nested concept");
+    let bundle = read_bundle(&dir);
+    let rendered = render_layer_index(&bundle, Layer::Curated);
+    assert!(
+        rendered.contains("* [Inner note](sub/inner.md)"),
+        "got\n{rendered}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn regeneration_refuses_a_symlinked_layer_directory() {
+    let dir = fixture_copy("index-symlink");
+    let external =
+        std::env::temp_dir().join(format!("looseleaf-indexes-external-{}", std::process::id()));
+    if external.exists() {
+        fs::remove_dir_all(&external).expect("clear external");
+    }
+    fs::create_dir_all(&external).expect("create external");
+    fs::write(external.join("index.md"), "# External\n").expect("write external index");
+    fs::remove_dir_all(dir.join("curated")).expect("remove curated dir");
+    std::os::unix::fs::symlink(&external, dir.join("curated")).expect("link curated");
+    let error = regenerate_indexes(&dir).expect_err("refuse a symlinked layer");
+    assert!(error.to_string().contains("symbolic link"), "got {error}");
+    let external_index =
+        fs::read_to_string(external.join("index.md")).expect("read external index");
+    assert_eq!(
+        external_index, "# External\n",
+        "nothing may be written through the link"
+    );
+    fs::remove_dir_all(&external).expect("clean external");
 }

@@ -136,7 +136,7 @@ fn daily_dates(bundle: &Bundle) -> BTreeMap<String, String> {
 /// frontmatter carries it in, so a stamp containing a quote or a
 /// newline can never break out of the scalar and corrupt the file
 /// the tool itself writes.
-fn escape_quoted(text: &str) -> String {
+pub(crate) fn escape_quoted(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for ch in text.chars() {
         match ch {

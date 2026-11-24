@@ -86,6 +86,10 @@ Further keys carry fixed meanings.
   once. A machine actor never stamps a human actor.
 - `stale_after` is written only under the staleness rules in the
   synthesis contract. Inventing a review date is a contract breach.
+  Its value is a date or a timestamp whose first ten characters are
+  that date in ISO form. The checker warns on any other shape,
+  because staleness reporting reads the date from those characters
+  and would otherwise skip the concept in silence.
 - `status` and `superseded_by` are used exactly as the standard defines
   them. A replaced concept is deprecated and points at its replacement.
   Concepts are deprecated, never deleted, without a human gate.
