@@ -369,6 +369,7 @@ fn check_concept(bundle: &Bundle, file: &ConceptFile, out: &mut Findings) {
         }
     }
     check_verified_shape(file, frontmatter, out);
+    check_stale_after_shape(file, frontmatter, out);
     check_concept_supersession(bundle, file, frontmatter, out);
     let sources_required = matches!(
         file.layer,
@@ -420,6 +421,26 @@ fn check_verified_shape(
             "FM_VERIFIED",
             &file.rel_path,
             "verified is present but does not carry by and at entries naming the actor and the time".to_owned(),
+        );
+    }
+}
+
+fn check_stale_after_shape(
+    file: &ConceptFile,
+    frontmatter: &crate::frontmatter::Frontmatter,
+    out: &mut Findings,
+) {
+    let Some(raw) = frontmatter.get_scalar("stale_after") else {
+        return;
+    };
+    let date_ok = raw.trim().get(..10).is_some_and(is_calendar_date);
+    if !date_ok {
+        out.warning(
+            "FM_STALE_AFTER",
+            &file.rel_path,
+            format!(
+                "stale_after carries {raw}, whose first ten characters are not a real calendar date, so staleness reporting skips this concept"
+            ),
         );
     }
 }

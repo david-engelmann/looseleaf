@@ -10,8 +10,10 @@
 //!
 //! This crate holds the deterministic half of the system. It reads
 //! bundles, checks them against the profile, and writes the parts of
-//! a bundle that are generated, today the claim registry, through a
-//! byte-stable writer that preserves whatever it does not own. It
+//! a bundle that are generated, the claim registry, the layer and
+//! root indexes, the dated log appends, and the synthesis pass
+//! mechanics of staleness reporting and claim promotion, through
+//! byte-stable writers that preserve whatever they do not own. It
 //! never calls a model. The judgment half of looseleaf, the synthesis
 //! pass that decides what to promote and what to supersede, ships as
 //! a written contract that a host agent executes. See DECISIONS.md in

@@ -9,33 +9,12 @@ use std::path::{Path, PathBuf};
 
 use looseleaf_core::check_bundle;
 
-fn clean_fixture() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("clean")
-}
+mod common;
 
-fn copy_dir(from: &Path, to: &Path) {
-    fs::create_dir_all(to).expect("create fixture copy");
-    for entry in fs::read_dir(from).expect("read fixture dir") {
-        let entry = entry.expect("fixture entry");
-        let target = to.join(entry.file_name());
-        if entry.path().is_dir() {
-            copy_dir(&entry.path(), &target);
-        } else {
-            fs::copy(entry.path(), &target).expect("copy fixture file");
-        }
-    }
-}
+use common::clean_fixture;
 
 fn defect_copy(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("looseleaf-check-{name}-{}", std::process::id()));
-    if dir.exists() {
-        fs::remove_dir_all(&dir).expect("clear old fixture copy");
-    }
-    copy_dir(&clean_fixture(), &dir);
-    dir
+    common::fixture_copy("check", name)
 }
 
 fn mutate(dir: &Path, rel: &str, edit: impl Fn(&str) -> String) {
@@ -508,4 +487,30 @@ fn symbolic_links_are_reported_not_followed() {
         .expect("create symlink");
     let found = codes(&dir);
     assert!(found.contains(&"LINK_SKIPPED"), "got {found:?}");
+}
+
+#[test]
+fn a_malformed_stale_after_draws_a_warning() {
+    let dir = defect_copy("stale-after-shape");
+    mutate(&dir, "people/ada.md", |text| {
+        text.replace(
+            "x-looseleaf-rank: 1",
+            "stale_after: soon\nx-looseleaf-rank: 1",
+        )
+    });
+    assert!(
+        codes(&dir).contains(&"FM_STALE_AFTER"),
+        "a stale_after with no real date must be flagged"
+    );
+    let dir = defect_copy("stale-after-valid");
+    mutate(&dir, "people/ada.md", |text| {
+        text.replace(
+            "x-looseleaf-rank: 1",
+            "stale_after: 2026-11-01\nx-looseleaf-rank: 1",
+        )
+    });
+    assert!(
+        !codes(&dir).contains(&"FM_STALE_AFTER"),
+        "a dated stale_after is the shape the profile states"
+    );
 }
