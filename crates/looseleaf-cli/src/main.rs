@@ -9,7 +9,10 @@
 //! `write-indexes` subcommand regenerates every layer index, the
 //! `write-root-index` subcommand regenerates the root index body
 //! under its preserved frontmatter, and the `append-log` subcommand
-//! appends one dated entry to a bundle or layer log. Arguments are
+//! appends one dated entry to a bundle or layer log. The `staleness`
+//! subcommand reports concepts whose review date has passed at a
+//! supplied stamp, and the `promote` subcommand promotes one daily
+//! claim into a curated concept. Arguments are
 //! strict. Anything the tool does not recognise is a usage error with
 //! exit code 2, never something silently ignored, and a non-UTF-8
 //! argument is reported rather than panicking, because a bundle path
@@ -37,10 +40,12 @@ fn main() -> ExitCode {
         "write-indexes" => run_write_indexes(&args[1..]),
         "write-root-index" => run_write_root_index(&args[1..]),
         "append-log" => run_append_log(&args[1..]),
+        "staleness" => run_staleness(&args[1..]),
+        "promote" => run_promote(&args[1..]),
         other => {
             eprintln!("unknown subcommand {other}");
             eprintln!(
-                "usage: looseleaf [check <bundle>] [write-registry <bundle> --at <timestamp>] [write-indexes <bundle>] [write-root-index <bundle>] [append-log <bundle> --date <date> --entry <text> [--layer <curated|daily>]]"
+                "usage: looseleaf [check <bundle>] [write-registry <bundle> --at <timestamp>] [write-indexes <bundle>] [write-root-index <bundle>] [append-log <bundle> --date <date> --entry <text> [--layer <curated|daily>]] [staleness <bundle> --at <timestamp>] [promote <bundle> --claim <id> --to <path> [--reason <text>]]"
             );
             ExitCode::from(2)
         }
@@ -182,6 +187,73 @@ fn run_append_log(args: &[OsString]) -> ExitCode {
         }
         Err(error) => {
             eprintln!("could not append the log entry, {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn run_staleness(args: &[OsString]) -> ExitCode {
+    if args.len() != 3 || args[1].to_str() != Some("--at") {
+        eprintln!("usage: looseleaf staleness <bundle> --at <timestamp>");
+        return ExitCode::from(2);
+    }
+    let Some(at) = args[2].to_str() else {
+        eprintln!("the --at timestamp is not valid UTF-8");
+        return ExitCode::from(2);
+    };
+    match looseleaf_core::pass::staleness_report(Path::new(&args[0]), at) {
+        Ok(stale) => {
+            for entry in &stale {
+                println!(
+                    "stale {} stale_after {} verified {}",
+                    entry.path,
+                    entry.stale_after,
+                    entry.verified_at.as_deref().unwrap_or("never")
+                );
+            }
+            println!("{} stale concepts at {at}", stale.len());
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("could not compute staleness, {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn run_promote(args: &[OsString]) -> ExitCode {
+    let shape_ok = (args.len() == 5 || args.len() == 7)
+        && args[1].to_str() == Some("--claim")
+        && args[3].to_str() == Some("--to")
+        && (args.len() == 5 || args[5].to_str() == Some("--reason"));
+    if !shape_ok {
+        eprintln!("usage: looseleaf promote <bundle> --claim <id> --to <path> [--reason <text>]");
+        return ExitCode::from(2);
+    }
+    let (Some(claim), Some(target)) = (args[2].to_str(), args[4].to_str()) else {
+        eprintln!("the --claim and --to values must be valid UTF-8");
+        return ExitCode::from(2);
+    };
+    let reason = if args.len() == 7 {
+        let Some(reason) = args[6].to_str() else {
+            eprintln!("the --reason value must be valid UTF-8");
+            return ExitCode::from(2);
+        };
+        Some(reason)
+    } else {
+        None
+    };
+    match looseleaf_core::pass::promote_claim(Path::new(&args[0]), claim, target, reason) {
+        Ok(looseleaf_core::pass::Promotion::Promoted) => {
+            println!("claim promoted, {claim} into {target}");
+            ExitCode::SUCCESS
+        }
+        Ok(looseleaf_core::pass::Promotion::AlreadyPresent) => {
+            println!("claim already promoted, {claim} in {target}");
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("could not promote the claim, {error}");
             ExitCode::FAILURE
         }
     }

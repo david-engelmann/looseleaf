@@ -327,3 +327,43 @@ fixture carries, so a checker finding about the missing file does
 not block the append that repairs it. An entry is one non-empty
 line, rendered as one bullet, and every date is a real calendar
 date given as an argument, never a clock reading.
+
+## D18. Synthesis pass mechanics
+
+Added 2026-11-24 with Phase 2 Slice 3. The pass module holds the
+three deterministic steps inside one synthesis pass. Staleness is
+a report, never an edit. A concept is stale when its stale_after
+date is earlier than the date of a stamp the caller supplies, the
+report names the newest verification the concept carries, and the
+tool reads no clock to produce it.
+
+Promotion copies one claim from the daily layer into a named
+curated concept with its identity, quote and sources unchanged,
+landing after the target's last claim block so a promoted claim
+never falls inside the superseded claims section. When the
+curated layer already carries the identity, promotion compares
+text, quote, sources and the supersedes link, and any difference
+is drift, refused with nothing written, because overwriting drift
+is how a memory product silently rewrites its own past. An
+identical claim is a no-op, except that a supersession entry the
+section is missing is still written, so an interrupted promotion
+completes on a later pass instead of reporting itself done.
+
+When a promotion carries a supersedes link it needs its one-line
+reason, and the target's superseded claims section gains the
+entry in the exact line shape the registry scanner reads, dated
+by the daily file the promoted claim lives in. The entry's text
+is the superseded claim's own text, read from wherever in the
+bundle it lives. The daily file is never touched, because the
+daily layer is append-only, and a daily claim carrying a reverse
+link is refused outright, since the daily layer never holds one.
+
+A promoted block renders its quote sub-item always as a
+double-quoted scalar, the shape every quote in the daily files
+and the curated layer already carries, because a quote is an
+excerpt whose exact wording is the evidence and the quoted form
+keeps a comma or a colon inside it unambiguous to any reader.
+The first hosted run of this slice caught the renderer using the
+frontmatter writer's plain form for a quote containing a comma,
+which parses back correctly under this product's own scanner and
+still broke the established shape.
