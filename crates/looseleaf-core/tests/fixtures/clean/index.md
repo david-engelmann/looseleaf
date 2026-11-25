@@ -9,4 +9,9 @@ license: MIT OR Apache-2.0
 
 * [Curated memory](curated/) - 1 concept
 * [People](people/) - 1 concept
+* [Groups](groups/) - 1 concept
+* [Topics](topics/) - 1 concept
 * [Daily logs](daily/) - 2 concepts
+* [Memory bank](bank/) - 1 concept
+* [Synthesis](synthesis/) - 1 concept
+* [Directives](directives/) - 1 concept

@@ -54,6 +54,10 @@ fn root_regeneration_preserves_the_frontmatter_byte_for_byte() {
 #[test]
 fn a_new_layer_joins_the_root_list_in_profile_order() {
     let dir = fixture_copy("root-layer");
+    fs::remove_dir_all(dir.join("topics")).expect("clear the standing topics layer");
+    let index = fs::read_to_string(dir.join("index.md")).expect("read root index");
+    let index = index.replace("* [Topics](topics/) - 1 concept\n", "");
+    fs::write(dir.join("index.md"), index).expect("drop the topics bullet");
     fs::create_dir(dir.join("topics")).expect("create topics dir");
     let topic = "---\ntype: Topic\ntitle: \"Fixture design\"\ndescription: \"How the clean fixture is shaped.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nsources:\n  - id: root-index\n    resource: index.md\n---\n\n# Fixture design\n";
     fs::write(dir.join("topics/fixture-design.md"), topic).expect("write topic");
