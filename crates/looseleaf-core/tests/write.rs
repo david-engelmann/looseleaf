@@ -141,35 +141,14 @@ fn upsert_on_a_bundle_file_preserves_the_extension_key() {
 #[test]
 fn registry_regeneration_does_not_follow_a_symlink_at_its_temp_path() {
     let dir = fixture_copy("registry-temp-symlink");
-    let outside =
-        std::env::temp_dir().join(format!("looseleaf-write-outside-{}", std::process::id()));
-    fs::write(&outside, "sentinel\n").expect("outside file plantable");
-    std::os::unix::fs::symlink(&outside, dir.join("claims.md.tmp-looseleaf"))
-        .expect("symlink plantable");
+    let outside = common::plant_temp_symlink(&dir, "claims.md.tmp-looseleaf", "write");
     let changed = regenerate_registry(&dir, "2026-11-03T00:00:00Z").expect("regenerate");
     assert!(changed, "a new stamp rewrites the registry");
-    assert_eq!(
-        fs::read_to_string(&outside).expect("outside readable"),
-        "sentinel\n",
-        "the file the link points at is untouched"
-    );
-    let target = dir.join("claims.md");
     assert!(
-        !fs::symlink_metadata(&target)
-            .expect("target metadata")
-            .file_type()
-            .is_symlink(),
-        "no symbolic link stands at the target"
-    );
-    assert!(
-        fs::read_to_string(&target)
+        fs::read_to_string(dir.join("claims.md"))
             .expect("registry readable")
             .contains("2026-11-03T00:00:00Z"),
         "the registry carries the new stamp"
     );
-    assert!(
-        fs::symlink_metadata(dir.join("claims.md.tmp-looseleaf")).is_err(),
-        "no temporary file remains beside the target"
-    );
-    let _ = fs::remove_file(&outside);
+    common::assert_temp_write_not_followed(&dir, "claims.md.tmp-looseleaf", "claims.md", &outside);
 }

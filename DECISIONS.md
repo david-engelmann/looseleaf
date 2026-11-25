@@ -770,3 +770,41 @@ cycle walk's cost and its unextracted skeleton, the
 registry in the walk's node set, the write_body window,
 and non-ASCII line separators outside the escaping
 alphabet.
+
+## D29. Phase 6 checkpoint dispositions (2026-11-25)
+
+The checkpoint reviews over the Phase 6 diff found the
+phase faithful to its scope, no defect that lets a write
+follow a plant or a printed check line carry a break, and
+the repairs below. The temporary write's rename step now
+refuses like its other steps, wrapped in an error naming
+the step and the temporary path, completing the naming
+discipline the scope pinned for the removal and creation
+steps and that the write step already followed. Every
+refusal from the helper now keeps the underlying failure's
+kind instead of re-kinding it to invalid input, since a
+permission refusal is not invalid input and a caller may
+match on the kind, a behaviour delta D28 did not record
+and this entry does. One sentence of D28 is corrected
+here, since D28 is landed history. Its read-only
+directory sentence says the failure arrives at the removal
+step, and that holds only when a stale temporary file
+stands there to fail its unlink. With nothing standing,
+the removal reports the path absent and proceeds, and the
+failure arrives at the creation step. The outcome is
+unchanged either way. The test net gains the two helper
+consumers it lacked, a plant at the root index writer's
+temp path and one at the report writer's, so every
+production caller of the helper now stands behind a plant.
+The family tests' shared scaffolding, the sentinel plant
+and the three closing assertions, is extracted into the
+shared test harness the suite already keeps, with the
+sentinel file removed by a guard on both the pass and the
+panic path. Accepted without change, with reasons. The
+planted concept document stands verbatim in both the core
+and the CLI test, inherent to a pin that spans two crates
+whose harnesses cannot be shared, as the Phase 5
+checkpoint recorded for the same pattern. The helper's
+call sites keep two idioms, import and full path, each
+file consistent with its own standing style for the same
+module.
