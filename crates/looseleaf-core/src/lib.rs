@@ -14,6 +14,9 @@
 //! root indexes, the dated log appends, and the synthesis pass
 //! mechanics of staleness reporting and claim promotion, through
 //! byte-stable writers that preserve whatever they do not own. It
+//! also stamps the frontmatter the contract binds the pass to and
+//! writes the Synthesis report concept each run is audited
+//! against. It
 //! never calls a model. The judgment half of looseleaf, the synthesis
 //! pass that decides what to promote and what to supersede, ships as
 //! a written contract that a host agent executes. See DECISIONS.md in
@@ -27,6 +30,7 @@ pub mod indexes;
 pub mod logs;
 pub mod pass;
 pub mod registry;
+pub mod report;
 pub mod stamps;
 pub mod write;
 

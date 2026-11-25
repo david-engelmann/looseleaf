@@ -150,6 +150,9 @@ pub fn check_bundle(root: &Path) -> CheckReport {
         if file.layer == Layer::People && !file.reserved {
             check_person_sections(file, &mut out);
         }
+        if file.layer == Layer::Synthesis && !file.reserved {
+            check_report_shape(file, &mut out);
+        }
         if file.reserved && file.rel_path.ends_with("log.md") {
             check_log_order(file, &mut out);
         }
@@ -603,6 +606,39 @@ fn check_person_sections(file: &ConceptFile, out: &mut Findings) {
             &file.rel_path,
             format!(
                 "person body lacks the sections {}",
+                missing
+                    .iter()
+                    .map(|name| format!("## {name}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        );
+    }
+}
+
+/// A synthesis file named as a pass report carries the report
+/// shape the writer creates, six sections in contract order. A
+/// synthesis concept under any other name is not the writer's
+/// business and is left alone.
+fn check_report_shape(file: &ConceptFile, out: &mut Findings) {
+    let name = file.rel_path.rsplit('/').next().unwrap_or_default();
+    let stem = name.strip_suffix(".md").unwrap_or(name);
+    if !crate::report::is_report_stem(stem) {
+        return;
+    }
+    let mut missing: Vec<&str> = Vec::new();
+    for section in crate::report::REPORT_HEADINGS {
+        let heading = format!("## {section}");
+        if !file.body.lines().any(|line| line.trim_end() == heading) {
+            missing.push(section);
+        }
+    }
+    if !missing.is_empty() {
+        out.warning(
+            "REPORT_SHAPE",
+            &file.rel_path,
+            format!(
+                "pass report lacks the sections {}",
                 missing
                     .iter()
                     .map(|name| format!("## {name}"))

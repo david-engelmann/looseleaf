@@ -505,3 +505,25 @@ pass. What they found and what changed:
   and a restamp over another actor's generated stamp proceeds
   without a warning, the diff in the bundle's history being the
   record of the change of hands.
+
+## D21. The pass report writer (2026-11-24)
+
+Phase 3 Slice 2 adds write-report, appending one entry to one
+section of the run's Synthesis report concept. The writer
+creates the report at synthesis/<date>-<time>.md from the run's
+stamp, which is validated as a real calendar date and a real
+time before it becomes a file name, with the profile's
+frontmatter and all six contract sections in order, so every
+later append is a lookup. Its generated stamp is applied
+through Slice 1's stamp-generated, so the one construction of
+that mapping serves both. Sections are named by pinned tokens
+on the LogScope pattern, a section ends at the next level two
+heading, and an existing report missing the named section is
+refused as malformed. When the synthesis directory is absent
+the writer creates it and regenerates that layer's index in
+the same operation, through a per-layer regeneration extracted
+from the index writer, so the tool's own write never leaves
+the bundle failing the layout check. The convention is banked
+in PROFILE section 7, and the checker warns REPORT_SHAPE on a
+report-named synthesis file whose body lacks one of the six
+sections, so the audited artifact is itself auditable.

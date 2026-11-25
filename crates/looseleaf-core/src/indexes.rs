@@ -152,38 +152,59 @@ pub fn regenerate_indexes(root: &Path) -> std::io::Result<Vec<String>> {
     let bundle = read_bundle(root);
     let mut written: Vec<String> = Vec::new();
     for layer in LAYERS {
-        let Some(dir) = layer.dir_name() else {
-            continue;
-        };
-        if !bundle.has_dir(dir) {
-            continue;
+        if let Some(rel) = regenerate_layer(root, &bundle, layer)? {
+            written.push(rel);
         }
-        // The bundle walker never follows a symbolic link, so a
-        // layer directory that is one holds no concepts this tool
-        // can see, and writing its index would land outside the
-        // bundle. Refuse rather than follow it.
-        if fs::symlink_metadata(root.join(dir)).is_ok_and(|meta| meta.file_type().is_symlink()) {
-            return Err(crate::write::invalid_input(format!(
-                "the layer directory {dir} is a symbolic link, and the writers never write through one"
-            )));
-        }
-        let rendered = render_layer_index(&bundle, layer);
-        let rel = format!("{dir}/index.md");
-        let target = root.join(&rel);
-        let current = match fs::read_to_string(&target) {
-            Ok(text) => Some(text),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
-            Err(error) => return Err(error),
-        };
-        if current.as_deref() == Some(rendered.as_str()) {
-            continue;
-        }
-        let temp = root.join(format!("{dir}/index.md.tmp-looseleaf"));
-        fs::write(&temp, rendered)?;
-        fs::rename(&temp, &target)?;
-        written.push(rel);
     }
     Ok(written)
+}
+
+/// Regenerate one layer's index from a bundle already read,
+/// returning the index's relative path when it was written and
+/// `None` when the layer is absent or its index already stands.
+/// The report writer uses this to keep a synthesis index current
+/// after creating the layer's first report.
+///
+/// # Errors
+///
+/// Returns an I/O error when the index cannot be read or written,
+/// and an `InvalidInput` error when the layer directory is a
+/// symbolic link.
+pub(crate) fn regenerate_layer(
+    root: &Path,
+    bundle: &crate::bundle::Bundle,
+    layer: Layer,
+) -> std::io::Result<Option<String>> {
+    let Some(dir) = layer.dir_name() else {
+        return Ok(None);
+    };
+    if !bundle.has_dir(dir) {
+        return Ok(None);
+    }
+    // The bundle walker never follows a symbolic link, so a
+    // layer directory that is one holds no concepts this tool
+    // can see, and writing its index would land outside the
+    // bundle. Refuse rather than follow it.
+    if fs::symlink_metadata(root.join(dir)).is_ok_and(|meta| meta.file_type().is_symlink()) {
+        return Err(crate::write::invalid_input(format!(
+            "the layer directory {dir} is a symbolic link, and the writers never write through one"
+        )));
+    }
+    let rendered = render_layer_index(bundle, layer);
+    let rel = format!("{dir}/index.md");
+    let target = root.join(&rel);
+    let current = match fs::read_to_string(&target) {
+        Ok(text) => Some(text),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+        Err(error) => return Err(error),
+    };
+    if current.as_deref() == Some(rendered.as_str()) {
+        return Ok(None);
+    }
+    let temp = root.join(format!("{dir}/index.md.tmp-looseleaf"));
+    fs::write(&temp, rendered)?;
+    fs::rename(&temp, &target)?;
+    Ok(Some(rel))
 }
 
 /// Split a document into its raw frontmatter span, fences included,
