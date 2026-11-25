@@ -12,7 +12,10 @@
 //! appends one dated entry to a bundle or layer log. The `staleness`
 //! subcommand reports concepts whose review date has passed at a
 //! supplied stamp, and the `promote` subcommand promotes one daily
-//! claim into a curated concept. Arguments are
+//! claim into a curated concept. The `stamp-generated` and
+//! `stamp-verified` subcommands stamp one concept's `generated`
+//! and `verified` frontmatter under the synthesis contract.
+//! Arguments are
 //! strict. Anything the tool does not recognise is a usage error with
 //! exit code 2, never something silently ignored, and a non-UTF-8
 //! argument is reported rather than panicking, because a bundle path
@@ -44,10 +47,12 @@ fn main() -> ExitCode {
         "append-log" => run_append_log(&args[1..]),
         "staleness" => run_staleness(&args[1..]),
         "promote" => run_promote(&args[1..]),
+        "stamp-generated" => run_stamp_generated(&args[1..]),
+        "stamp-verified" => run_stamp_verified(&args[1..]),
         other => {
             eprintln!("unknown subcommand {other}");
             eprintln!(
-                "usage: looseleaf [check <bundle>] [write-registry <bundle> --at <timestamp>] [write-indexes <bundle>] [write-root-index <bundle>] [append-log <bundle> --date <date> --entry <text> [--layer <curated|daily>]] [staleness <bundle> --at <timestamp>] [promote <bundle> --claim <id> --to <path> [--reason <text>]]"
+                "usage: looseleaf [check <bundle>] [write-registry <bundle> --at <timestamp>] [write-indexes <bundle>] [write-root-index <bundle>] [append-log <bundle> --date <date> --entry <text> [--layer <curated|daily>]] [staleness <bundle> --at <timestamp>] [promote <bundle> --claim <id> --to <path> [--reason <text>]] [stamp-generated <bundle> --path <path> --at <timestamp> [--by <actor>]] [stamp-verified <bundle> --path <path> --by <actor> --at <timestamp>]"
             );
             ExitCode::from(2)
         }
@@ -252,6 +257,78 @@ fn run_promote(args: &[OsString]) -> ExitCode {
         }
         Err(error) => {
             eprintln!("could not promote the claim, {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn run_stamp_generated(args: &[OsString]) -> ExitCode {
+    let shape_ok = (args.len() == 5 || args.len() == 7)
+        && args[1].to_str() == Some("--path")
+        && args[3].to_str() == Some("--at")
+        && (args.len() == 5 || args[5].to_str() == Some("--by"));
+    if !shape_ok {
+        eprintln!(
+            "usage: looseleaf stamp-generated <bundle> --path <path> --at <timestamp> [--by <actor>]"
+        );
+        return ExitCode::from(2);
+    }
+    let (Some(path), Some(at)) = (args[2].to_str(), args[4].to_str()) else {
+        eprintln!("the --path and --at values must be valid UTF-8");
+        return ExitCode::from(2);
+    };
+    let by = if args.len() == 7 {
+        let Some(by) = args[6].to_str() else {
+            eprintln!("the --by value must be valid UTF-8");
+            return ExitCode::from(2);
+        };
+        by
+    } else {
+        looseleaf_core::stamps::PASS_ACTOR
+    };
+    match looseleaf_core::stamps::stamp_generated(Path::new(&args[0]), path, by, at) {
+        Ok(looseleaf_core::stamps::Stamp::Stamped) => {
+            println!("generated stamped, {path}");
+            ExitCode::SUCCESS
+        }
+        Ok(looseleaf_core::stamps::Stamp::AlreadyCurrent) => {
+            println!("generated already current, {path}");
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("could not stamp generated, {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn run_stamp_verified(args: &[OsString]) -> ExitCode {
+    let shape_ok = args.len() == 7
+        && args[1].to_str() == Some("--path")
+        && args[3].to_str() == Some("--by")
+        && args[5].to_str() == Some("--at");
+    if !shape_ok {
+        eprintln!(
+            "usage: looseleaf stamp-verified <bundle> --path <path> --by <actor> --at <timestamp>"
+        );
+        return ExitCode::from(2);
+    }
+    let (Some(path), Some(by), Some(at)) = (args[2].to_str(), args[4].to_str(), args[6].to_str())
+    else {
+        eprintln!("the --path, --by and --at values must be valid UTF-8");
+        return ExitCode::from(2);
+    };
+    match looseleaf_core::stamps::stamp_verified(Path::new(&args[0]), path, by, at) {
+        Ok(looseleaf_core::stamps::Stamp::Stamped) => {
+            println!("verification stamped, {path}");
+            ExitCode::SUCCESS
+        }
+        Ok(looseleaf_core::stamps::Stamp::AlreadyCurrent) => {
+            println!("verification already recorded, {path}");
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("could not stamp verified, {error}");
             ExitCode::FAILURE
         }
     }

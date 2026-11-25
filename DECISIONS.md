@@ -458,3 +458,50 @@ profile confines claim blocks to the daily and curated layers,
 and the implementation follows the profile. The contract phrase
 is flagged here for the human gate that owns contract changes,
 not amended by this pass.
+
+## D20. Phase 3 design dispositions (2026-11-24)
+
+Phase 3 mechanizes the pass's paperwork, the two frontmatter
+stamps, the Synthesis report concept and the re-verification
+queue. Its scope was reviewed before building under the three
+review shape, a red team pass, a spec fidelity pass against the
+design record, the profile and the contract, and a standards
+pass. What they found and what changed:
+
+- The queue's membership is the contract's created or changed
+  set only. The scope's first draft folded the staleness report
+  into the queue, and no source puts stale concepts there. The
+  staleness report stays its own mechanic.
+- The report is one concept per run, named from the run's stamp
+  as synthesis/<date>-<time>.md. The first draft's one file per
+  date merged two runs into a single audit unit and left the
+  second run's changes carrying the first run's stamp.
+- Stamp and date arguments are validated mechanically before
+  any write, an actor as one non-empty line and a stamp's date
+  as a real calendar date, because the staleness report orders
+  verifications as strings and one garbage stamp would falsify
+  it permanently.
+- Stamps resolve their target through the bundle walker and
+  refuse the claim registry, whose frontmatter the registry
+  renderer owns outright, so a stamp there would vanish at the
+  next regeneration, and any directive concept, which the
+  contract human-gates against change.
+- The report writer creates a missing synthesis directory and
+  regenerates that layer's index in the same operation, so its
+  own write never leaves the bundle failing the layout check.
+- The actor prohibitions, that a machine actor never stamps a
+  human actor and that a pass never verifies a concept it
+  changed in the same pass, stay in the contract. A stateless
+  command cannot know its caller or what else the caller
+  changed, so neither is mechanically enforceable here, and
+  this entry records that division openly instead of letting
+  the tool pretend to enforce it.
+- The queue's overlap with the upkeep engine's general
+  mechanism is surfaced to Main under the design record's
+  boundary. This tool builds the looseleaf pass's own instance
+  only, its membership fixed by the contract.
+- Accepted without change, two asymmetries the reviews noted.
+  Report appends are not idempotent, matching the log writer,
+  and a restamp over another actor's generated stamp proceeds
+  without a warning, the diff in the bundle's history being the
+  record of the change of hands.

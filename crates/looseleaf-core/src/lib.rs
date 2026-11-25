@@ -27,6 +27,7 @@ pub mod indexes;
 pub mod logs;
 pub mod pass;
 pub mod registry;
+pub mod stamps;
 pub mod write;
 
 pub use check::{CheckReport, Finding, Severity, check_bundle};
