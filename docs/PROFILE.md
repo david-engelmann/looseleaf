@@ -210,3 +210,9 @@ The synthesis pass is specified in full in
 agent executes. The mechanical half of that contract, layout,
 frontmatter, provenance shape, chain integrity and registry currency,
 is what `looseleaf check` verifies.
+
+The report a run writes is a Synthesis concept named from the run's
+stamp, `synthesis/<date>-<time>.md`, carrying six sections in order,
+Promotions, Supersessions, Regenerated, Flags, Blocked and
+Re-verification queue. A synthesis file named in that pattern whose
+body lacks one of the six sections draws a REPORT_SHAPE warning.
