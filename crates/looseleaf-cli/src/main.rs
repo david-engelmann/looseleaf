@@ -16,7 +16,9 @@
 //! `stamp-verified` subcommands stamp one concept's `generated`
 //! and `verified` frontmatter under the synthesis contract, and
 //! the `write-report` subcommand appends one entry to a section
-//! of the run's Synthesis report concept. Arguments are
+//! of the run's Synthesis report concept. The `queue` subcommand
+//! prints the re-verification queue a pass hands on, the concepts
+//! the pass created or changed in meaning. Arguments are
 //! strict. Anything the tool does not recognise is a usage error with
 //! exit code 2, never something silently ignored, and a non-UTF-8
 //! argument is reported rather than panicking, because a bundle path
@@ -51,10 +53,11 @@ fn main() -> ExitCode {
         "stamp-generated" => run_stamp_generated(&args[1..]),
         "stamp-verified" => run_stamp_verified(&args[1..]),
         "write-report" => run_write_report(&args[1..]),
+        "queue" => run_queue(&args[1..]),
         other => {
             eprintln!("unknown subcommand {other}");
             eprintln!(
-                "usage: looseleaf [check <bundle>] [write-registry <bundle> --at <timestamp>] [write-indexes <bundle>] [write-root-index <bundle>] [append-log <bundle> --date <date> --entry <text> [--layer <curated|daily>]] [staleness <bundle> --at <timestamp>] [promote <bundle> --claim <id> --to <path> [--reason <text>]] [stamp-generated <bundle> --path <path> --at <timestamp> [--by <actor>]] [stamp-verified <bundle> --path <path> --by <actor> --at <timestamp>] [write-report <bundle> --at <timestamp> --section <token> --entry <text>]"
+                "usage: looseleaf [check <bundle>] [write-registry <bundle> --at <timestamp>] [write-indexes <bundle>] [write-root-index <bundle>] [append-log <bundle> --date <date> --entry <text> [--layer <curated|daily>]] [staleness <bundle> --at <timestamp>] [promote <bundle> --claim <id> --to <path> [--reason <text>]] [stamp-generated <bundle> --path <path> --at <timestamp> [--by <actor>]] [stamp-verified <bundle> --path <path> --by <actor> --at <timestamp>] [write-report <bundle> --at <timestamp> --section <token> --entry <text>] [queue <bundle> --at <timestamp> [--changed <path>]...]"
             );
             ExitCode::from(2)
         }
@@ -367,6 +370,48 @@ fn run_write_report(args: &[OsString]) -> ExitCode {
         }
         Err(error) => {
             eprintln!("could not write the report entry, {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn run_queue(args: &[OsString]) -> ExitCode {
+    let usage = "usage: looseleaf queue <bundle> --at <timestamp> [--changed <path>]...";
+    if args.len() < 3 || args[1].to_str() != Some("--at") {
+        eprintln!("{usage}");
+        return ExitCode::from(2);
+    }
+    let Some(at) = args[2].to_str() else {
+        eprintln!("the --at value must be valid UTF-8");
+        return ExitCode::from(2);
+    };
+    let mut changed: Vec<String> = Vec::new();
+    let mut index = 3;
+    while index < args.len() {
+        if args[index].to_str() != Some("--changed") || index + 1 >= args.len() {
+            eprintln!("{usage}");
+            return ExitCode::from(2);
+        }
+        let Some(path) = args[index + 1].to_str() else {
+            eprintln!("the --changed value must be valid UTF-8");
+            return ExitCode::from(2);
+        };
+        changed.push(path.to_owned());
+        index += 2;
+    }
+    match looseleaf_core::pass::reverification_queue(Path::new(&args[0]), at, &changed) {
+        Ok(queue) => {
+            for path in &queue {
+                println!("queue {path} changed in this pass");
+            }
+            println!(
+                "{} concepts in the re-verification queue at {at}",
+                queue.len()
+            );
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("could not assemble the queue, {error}");
             ExitCode::FAILURE
         }
     }

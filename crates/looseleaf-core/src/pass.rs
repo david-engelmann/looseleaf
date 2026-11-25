@@ -1,10 +1,13 @@
 //! The synthesis pass mechanics, the deterministic steps inside
 //! one pass that a machine can do without judgment.
 //!
-//! Three steps live here. Staleness computation reports which
+//! Four steps live here. Staleness computation reports which
 //! concepts' `stale_after` has passed relative to a stamp the
 //! caller supplies, as a list and never an edit, because acting on
-//! staleness is a contract judgment. Promotion copies one claim
+//! staleness is a contract judgment. The re-verification queue
+//! validates and orders the concepts a pass created or changed in
+//! meaning, the set the contract hands on for re-verification,
+//! likewise as a list and never an edit. Promotion copies one claim
 //! from a daily file into a named curated concept with its
 //! identity, quote and sources unchanged, and refuses when the
 //! curated layer already carries the identity anywhere, identically
@@ -121,6 +124,59 @@ pub fn staleness_report(root: &Path, at: &str) -> std::io::Result<Vec<StaleEntry
         }
     }
     Ok(stale)
+}
+
+/// Assemble the re-verification queue a pass hands on, the
+/// concepts the pass created or changed in meaning in the same
+/// pass, supplied by the caller in pass order. Each path is
+/// resolved through the bundle walker and refused when it names
+/// no concept the queue can carry, and duplicates fall out by
+/// resolved path. The queue is a list, never an edit, and its
+/// membership is the contract's set only. Verification currency
+/// auditing stays the trust auditor's work, never recomputed
+/// here.
+///
+/// # Errors
+///
+/// Returns an error when the stamp carries no real calendar
+/// date, or when a supplied path names no file in the bundle, a
+/// reserved file, the claim registry, or a daily file.
+pub fn reverification_queue(
+    root: &Path,
+    at: &str,
+    changed: &[String],
+) -> std::io::Result<Vec<String>> {
+    if date_part(at).is_none() {
+        return Err(invalid(format!(
+            "the stamp {at} carries no real calendar date"
+        )));
+    }
+    let bundle = read_bundle(root);
+    let mut queue: Vec<String> = Vec::new();
+    for path in changed {
+        let Some(file) = bundle.files.iter().find(|file| &file.rel_path == path) else {
+            return Err(not_found(format!("no file at {path} in the bundle")));
+        };
+        if file.is_registry {
+            return Err(invalid(
+                "claims.md is the claim registry, which is regenerated, not verified".to_owned(),
+            ));
+        }
+        if !file.is_managed_concept() {
+            return Err(invalid(format!(
+                "{path} is not a concept the queue can carry"
+            )));
+        }
+        if file.layer == Layer::Daily {
+            return Err(invalid(format!(
+                "{path} is in the daily layer, which a pass never changes"
+            )));
+        }
+        if !queue.contains(path) {
+            queue.push(path.clone());
+        }
+    }
+    Ok(queue)
 }
 
 /// How a promotion ended.
