@@ -208,14 +208,23 @@ fn run_append_log(args: &[OsString]) -> ExitCode {
 /// the run and the check lines are banked as evidence in the
 /// records that quote them, so a field carrying a line break
 /// would forge extra lines in that record. Backslashes double
-/// first, then a line break and a carriage return render as
-/// two-character sequences. The core report's own values are
+/// first, then every character the records' readers treat as
+/// a line boundary renders as an escape, a line feed and a
+/// carriage return as backslash n and backslash r, and the
+/// line tabulation, form feed, next line control, line
+/// separator and paragraph separator as backslash u followed
+/// by four hex digits. The core report's own values are
 /// never escaped, only what this printer puts on the line.
 fn escape_line_field(value: &str) -> String {
     value
         .replace('\\', "\\\\")
         .replace('\n', "\\n")
         .replace('\r', "\\r")
+        .replace('\u{b}', "\\u000b")
+        .replace('\u{c}', "\\u000c")
+        .replace('\u{85}', "\\u0085")
+        .replace('\u{2028}', "\\u2028")
+        .replace('\u{2029}', "\\u2029")
 }
 
 fn run_staleness(args: &[OsString]) -> ExitCode {

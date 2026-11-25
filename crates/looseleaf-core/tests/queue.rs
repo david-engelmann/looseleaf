@@ -101,3 +101,22 @@ fn the_queue_refuses_paths_it_cannot_carry() {
         "got {error}"
     );
 }
+
+#[test]
+fn the_queue_refuses_a_path_carrying_a_separator() {
+    // The queue prints one line per path, so its refusal set
+    // is the printer's whole line alphabet, not the ASCII
+    // pair alone.
+    let dir = fixture_copy("separator-refusal");
+    fs::write(
+        dir.join("curated/weird\u{2028}name.md"),
+        "---\ntype: Curated Memory\ntitle: \"Separator name\"\ndescription: \"A concept whose file name carries a line separator.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nsources:\n  - id: day-one\n    resource: daily/2026-11-01.md\n    title: Daily log for 2026-11-01\n---\n\n# Separator name\n",
+    )
+    .expect("plant the concept");
+    let error = reverification_queue(&dir, AT, &paths(&["curated/weird\u{2028}name.md"]))
+        .expect_err("the queue must refuse");
+    assert!(
+        error.to_string().contains("carries a line break"),
+        "got {error}"
+    );
+}
