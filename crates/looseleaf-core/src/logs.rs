@@ -23,7 +23,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::check::is_calendar_date;
-use crate::write::{invalid_input as invalid, line_ending};
+use crate::write::{invalid_input as invalid, line_ending, write_via_temp};
 
 /// Which of the bundle's logs an append targets. The profile gives
 /// exactly three logs, so the type has exactly three variants and
@@ -117,9 +117,7 @@ pub fn append_log(
         None => format!("{}\n\n## {date}\n\n- {entry}\n", scope.heading()),
         Some(text) => render_append(&text, date, entry)?,
     };
-    let temp = target.with_extension("md.tmp-looseleaf");
-    fs::write(&temp, rendered)?;
-    fs::rename(&temp, &target)?;
+    write_via_temp(&target, &rendered)?;
     Ok(rel.to_owned())
 }
 

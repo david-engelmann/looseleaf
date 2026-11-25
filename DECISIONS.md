@@ -719,3 +719,54 @@ line discipline. The registry stands in the walk's node set,
 so a cycle routed through a hand-edited claims file fires on
 that file, which is correct detection on a bundle no tool
 writes.
+
+## D28. Phase 6 opening dispositions (2026-11-25)
+
+Phase 6 opens on Main's charge with its design reviews'
+dispositions recorded here before any building, as D20,
+D24 and D26 did for their phases, and it reverses two
+banked acceptances by name. D23 accepted the fixed
+predictable temp path beside each target as the standing
+house pattern from the earlier writers. That acceptance is
+reversed. Six implementations of the sibling temp and
+rename write stand in the core, the shared helper
+write_via_temp serving the stamps and the report writer
+and five hand-rolled copies in regenerate_layer,
+regenerate_root_index, append_log, write_body and
+regenerate_registry, and every one writes its temp with
+fs::write, which follows a symlink planted at the temp
+path. The five copies route through the one helper, and
+the helper removes any file standing at the temp path
+before creating its temp with create_new, so a planted
+link is unlinked rather than followed and a path planted
+in between refuses the write. The removal ignores exactly
+the absent case, refuses on any other failure with an
+error naming the temp path, and is remove_file only, so
+no directory is ever removed and a directory standing at
+the temp path refuses the write and stays intact. Create
+failures are wrapped in an error naming the temp path as
+well. The hardening's one honest delta is recorded, in a
+read-only directory the failure now arrives at the removal
+step rather than at the rename, with the outcome
+unchanged. D27 accepted the check printer and the
+caller-argument success lines printing their values raw
+under one boundary. The check half of that acceptance is
+reversed on the dogfood evidence, since the dogfood
+records bank check output as their evidence and the
+boundary D27 drew around the pass outputs does not match
+where the audited record comes from. The finding's path
+and message are escaped at the check print site with the
+Phase 5 helper and the core values stay raw. The fields
+left unescaped are closed sets, the severity label, the
+static rule code and the summary's counts, and a future
+change making any of them dynamic reopens this question.
+The success half of D27's sentence stands, on this phase's
+own reasoning that those lines echo the caller's arguments
+back to the caller, and error lines on stderr stay raw as
+operator diagnostics. The remaining acceptances stand as
+recorded, the one-second report collision, report appends
+not idempotent, a restamp proceeding without warning, the
+cycle walk's cost and its unextracted skeleton, the
+registry in the walk's node set, the write_body window,
+and non-ASCII line separators outside the escaping
+alphabet.
