@@ -20,6 +20,7 @@ use std::path::Path;
 
 use crate::PROFILE_NAME;
 use crate::bundle::{Bundle, Layer};
+use crate::write::write_via_temp;
 
 /// One entry of a curated concept's superseded claims section, the
 /// line shape the profile defines in section 3. `- ` then the old
@@ -237,6 +238,6 @@ pub fn regenerate_registry(root: &Path, at: &str) -> std::io::Result<bool> {
     if current.as_deref() == Some(rendered.as_str()) {
         return Ok(false);
     }
-    crate::write::write_via_temp(&target, &rendered)?;
+    write_via_temp(&target, &rendered)?;
     Ok(true)
 }

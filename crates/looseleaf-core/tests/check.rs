@@ -33,6 +33,13 @@ fn write_file(dir: &Path, rel: &str, text: &str) {
     fs::write(&path, text).expect("write fixture file");
 }
 
+fn shared_plant(name: &str) -> String {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures")
+        .join(name);
+    fs::read_to_string(&path).expect("read the shared plant")
+}
+
 fn codes(dir: &Path) -> Vec<&'static str> {
     check_bundle(dir)
         .findings
@@ -621,7 +628,7 @@ fn a_finding_on_a_line_break_concept_stays_raw_in_the_report() {
     write_file(
         &dir,
         "curated/weird\nname.md",
-        "---\ntype: Curated Memory\ntitle: \"Weird name\"\ndescription: \"A concept whose file name and replacement both carry line breaks.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nsources:\n  - id: day-one\n    resource: daily/2026-11-01.md\n    title: Daily log for 2026-11-01\nsuperseded_by: \"curated/no\\nsuch.md\"\n---\n\n# Weird name\n\nBody text.\n",
+        &shared_plant("weird-concept.md"),
     );
     let report = check_bundle(&dir);
     let finding = report
@@ -651,7 +658,7 @@ fn a_finding_on_a_separator_concept_stays_raw_in_the_report() {
     write_file(
         &dir,
         "curated/weird\u{2028}na\u{b}me.md",
-        "---\ntype: Curated Memory\ntitle: \"Separator name\"\ndescription: \"A concept whose file name and replacement carry the separator characters.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nsources:\n  - id: day-one\n    resource: daily/2026-11-01.md\n    title: Daily log for 2026-11-01\nsuperseded_by: \"curated/no\u{85}\u{c}such\u{2029}.md\"\n---\n\n# Separator name\n\nBody text.\n",
+        &shared_plant("separator-concept.md"),
     );
     let report = check_bundle(&dir);
     let finding = report
