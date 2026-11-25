@@ -214,19 +214,21 @@ fn closing_lines_escape_the_echoed_stamp() {
     let dir = fixture_copy("closing-escape");
     let outcome = run(
         &dir,
-        &["staleness", "--at", "2026-11-24\n0 stale concepts at 1970-01-01"],
+        &[
+            "staleness",
+            "--at",
+            "2026-11-24\n0 stale concepts at 1970-01-01",
+        ],
     );
     assert_eq!(outcome.code, 0, "stderr {}", outcome.stderr);
     assert_eq!(
-        outcome.stdout,
-        "0 stale concepts at 2026-11-24\\n0 stale concepts at 1970-01-01\n",
+        outcome.stdout, "0 stale concepts at 2026-11-24\\n0 stale concepts at 1970-01-01\n",
         "the echoed stamp cannot forge a second summary line"
     );
     let outcome = run(&dir, &["queue", "--at", "2026-11-24\nforged"]);
     assert_eq!(outcome.code, 0, "stderr {}", outcome.stderr);
     assert_eq!(
-        outcome.stdout,
-        "0 concepts in the re-verification queue at 2026-11-24\\nforged\n",
+        outcome.stdout, "0 concepts in the re-verification queue at 2026-11-24\\nforged\n",
         "the queue closing line carries the same discipline"
     );
 }
