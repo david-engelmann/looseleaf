@@ -545,7 +545,11 @@ fn write_third_concept(dir: &Path, target: &str) {
             "---\ntype: Topic\ntitle: \"Third\"\ndescription: \"A third concept planted by the cycle tests.\"\ngenerated: {{ by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }}\nstatus: deprecated\nsuperseded_by: {target}\nsources:\n  - id: day-one\n    resource: daily/2026-11-01.md\n    title: Daily log for 2026-11-01\n---\n\n# Third\n"
         ),
     );
-    write_file(dir, "topics/index.md", "# Topics\n\n* [Third](third.md)\n");
+    write_file(
+        dir,
+        "topics/index.md",
+        "# Topics\n\n* [Standup notes](standup-notes.md)\n* [Third](third.md)\n",
+    );
 }
 
 #[test]

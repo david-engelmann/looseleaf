@@ -527,11 +527,12 @@ fn check_concept_cycles(bundle: &Bundle, out: &mut Findings) {
                 cycle.sort_unstable();
                 if reported.insert(cycle.clone()) {
                     for member in &cycle {
+                        let target = &edges[*member];
                         out.error(
                             "FM_SUPERSEDE_CYCLE",
                             member,
                             format!(
-                                "the concept's superseded_by chain forms a cycle through {}, so no concept in the cycle has a live successor",
+                                "superseded_by names {target}, and the chain forms a cycle through {}, so no concept in the cycle has a live successor",
                                 cycle.join(", ")
                             ),
                         );
