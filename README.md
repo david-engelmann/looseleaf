@@ -27,4 +27,4 @@ Some acts stay with the person who owns the memory. The tool will not retire a s
 
 ## Status
 
-The bundle checker, the claim registry writer, layer and root index regeneration, dated log appends, and the synthesis pass mechanics have landed and pass the hosted gate. The crates are not yet published.
+The bundle checker, the claim registry writer, layer and root index regeneration, dated log appends, the synthesis pass mechanics, the frontmatter stamps, the Synthesis report writer, the re-verification queue and the deprecation act have landed and pass the hosted gate. The crates are not yet published.
