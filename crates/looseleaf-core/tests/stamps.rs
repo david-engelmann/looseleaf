@@ -239,7 +239,7 @@ fn stamp_verified_extends_a_record_that_carries_extra_entries() {
     let text = fs::read_to_string(&path).expect("read ada");
     let mutated = text.replace(
         "generated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }",
-        "generated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nverified:\n  by: checker\n  at: \"2026-11-24T09:00:00Z\"\n  detail:\n    source: spot check",
+        "generated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nverified:\n  by: checker\n  at: \"2026-11-24T09:00:00Z\"\n  basis: [spot check, second pair]",
     );
     assert_ne!(mutated, text);
     fs::write(&path, &mutated).expect("write the mutation");
