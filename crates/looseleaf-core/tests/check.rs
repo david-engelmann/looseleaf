@@ -610,3 +610,33 @@ fn a_converging_chain_is_not_a_cycle() {
         "two concepts replaced by one live successor is ordinary"
     );
 }
+
+#[test]
+fn a_finding_on_a_line_break_concept_stays_raw_in_the_report() {
+    // The CLI printer escapes finding paths and messages for
+    // its lines; the core report's own values are never
+    // escaped, so a consumer of the report sees the true path
+    // and the true message, line breaks included.
+    let dir = defect_copy("raw-finding");
+    write_file(
+        &dir,
+        "curated/weird\nname.md",
+        "---\ntype: Curated Memory\ntitle: \"Weird name\"\ndescription: \"A concept whose file name and replacement both carry line breaks.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nsources:\n  - id: day-one\n    resource: daily/2026-11-01.md\n    title: Daily log for 2026-11-01\nsuperseded_by: \"curated/no\\nsuch.md\"\n---\n\n# Weird name\n\nBody text.\n",
+    );
+    let report = check_bundle(&dir);
+    let finding = report
+        .findings
+        .iter()
+        .find(|finding| finding.code == "FM_SUPERSEDED_BY")
+        .expect("the plant draws its superseded_by finding");
+    assert!(
+        finding.path.contains('\n'),
+        "the core path stays raw, got {:?}",
+        finding.path
+    );
+    assert!(
+        finding.message.contains('\n'),
+        "the core message stays raw, got {:?}",
+        finding.message
+    );
+}
