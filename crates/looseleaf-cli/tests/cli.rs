@@ -185,6 +185,31 @@ fn deprecate_prints_its_pinned_lines() {
 }
 
 #[test]
+fn staleness_escapes_line_breaks_in_its_printed_fields() {
+    let dir = fixture_copy("staleness-escape");
+    std::fs::write(
+        dir.join("curated/weird\nname.md"),
+        "---\ntype: Curated Memory\ntitle: \"Weird\"\ndescription: \"A concept whose file name carries a line break.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nstale_after: 2026-11-01\nverified: { by: \"process:looseleaf-synthesis\", at: \"2026-11-20T00:00:00Z\\nforged\" }\n---\n\n# Weird\n",
+    )
+    .expect("write the line break concept");
+    let outcome = run(&dir, &["staleness", "--at", "2026-11-24T00:00:00Z"]);
+    assert_eq!(outcome.code, 0, "stderr {}", outcome.stderr);
+    assert!(
+        outcome.stdout.contains(
+            "stale curated/weird\\nname.md stale_after 2026-11-01 verified 2026-11-20T00:00:00Z\\nforged"
+        ),
+        "both fields print escaped on one line, got {}",
+        outcome.stdout
+    );
+    assert_eq!(
+        outcome.stdout.lines().count(),
+        2,
+        "one stale line and the closing count, nothing forged, got {}",
+        outcome.stdout
+    );
+}
+
+#[test]
 fn usage_errors_exit_two() {
     let dir = fixture_copy("usage-deprecate");
     let outcome = run(&dir, &["deprecate", "--path", "people/ada.md"]);

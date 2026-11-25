@@ -203,6 +203,20 @@ fn run_append_log(args: &[OsString]) -> ExitCode {
     }
 }
 
+/// Escape a bundle-derived field for one printed line. The
+/// staleness lines are pasted into the pass report that audits
+/// the run, so a field carrying a line break would forge extra
+/// lines in that record. Backslashes double first, then a line
+/// break and a carriage return render as two-character
+/// sequences. The core report's own values are never escaped,
+/// only what this printer puts on the line.
+fn escape_line_field(value: &str) -> String {
+    value
+        .replace('\\', "\\\\")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+}
+
 fn run_staleness(args: &[OsString]) -> ExitCode {
     if args.len() != 3 || args[1].to_str() != Some("--at") {
         eprintln!("usage: looseleaf staleness <bundle> --at <timestamp>");
@@ -217,9 +231,9 @@ fn run_staleness(args: &[OsString]) -> ExitCode {
             for entry in &stale {
                 println!(
                     "stale {} stale_after {} verified {}",
-                    entry.path,
+                    escape_line_field(&entry.path),
                     entry.stale_after,
-                    entry.verified_at.as_deref().unwrap_or("never")
+                    escape_line_field(entry.verified_at.as_deref().unwrap_or("never"))
                 );
             }
             println!("{} stale concepts at {at}", stale.len());
