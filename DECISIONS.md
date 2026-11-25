@@ -683,3 +683,39 @@ parser reads these lines. The fixture completion stands as
 its own slice landing last, since it is surgery on a fixture
 the whole suite stands on and the earlier slices assert
 finding sets against the fixture as it stands.
+
+## D27. Phase 5 checkpoint dispositions (2026-11-25)
+
+The checkpoint reviews over the Phase 5 diff found the phase
+faithful to its scope, and the repairs and corrections stand
+here. The cycle finding's message now names the member's own
+pointer beside the cycle's membership, as the scope's wording
+asked. The staleness and queue closing lines escape the
+caller's stamp they echo, since the stamp is validated on its
+date alone and a line break in its tail would otherwise forge
+a second summary line in the output the phase exists to keep
+line-safe. One correction to D26 stands in this entry, since
+D26 is landed history. Its accepted-ambiguity note concedes
+that a path holding a literal backslash and n prints the same
+as an escaped line break, and that is not so. The printer
+doubles backslashes first, so the literal prints doubled and
+the escaped break prints single, and a reader can reconstruct
+every printed path exactly. The concession is withdrawn, and
+no reader should reshape the printer to match it. Accepted
+without change, with reasons. The cycle walk's cost grows
+with the cube of a long chain's length in the worst case, the
+same shape as the claim walk it follows, and bundles at the
+product's scale sit far below the size where that binds. The
+walk skeleton is shared in shape with the claim walk but not
+extracted, since the two differ in edge type and reporting
+and a third walk is the point where extraction pays. The
+check printer and the caller-argument success lines print
+their values raw, a boundary kept deliberately, since the
+line-safety invariant binds the pass outputs that are pasted
+into the audited record, which the closing-line repair now
+covers in full. Non-ASCII line separators in file names pass
+the escaping untouched, the ASCII pair being the record's
+line discipline. The registry stands in the walk's node set,
+so a cycle routed through a hand-edited claims file fires on
+that file, which is correct detection on a bundle no tool
+writes.

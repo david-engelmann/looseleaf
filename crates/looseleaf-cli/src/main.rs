@@ -236,7 +236,11 @@ fn run_staleness(args: &[OsString]) -> ExitCode {
                     escape_line_field(entry.verified_at.as_deref().unwrap_or("never"))
                 );
             }
-            println!("{} stale concepts at {at}", stale.len());
+            println!(
+                "{} stale concepts at {}",
+                stale.len(),
+                escape_line_field(at)
+            );
             ExitCode::SUCCESS
         }
         Err(error) => {
@@ -459,8 +463,9 @@ fn run_queue(args: &[OsString]) -> ExitCode {
                 println!("queue {path} changed in this pass");
             }
             println!(
-                "{} concepts in the re-verification queue at {at}",
-                queue.len()
+                "{} concepts in the re-verification queue at {}",
+                queue.len(),
+                escape_line_field(at)
             );
             ExitCode::SUCCESS
         }
