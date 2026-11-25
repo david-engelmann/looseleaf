@@ -376,6 +376,10 @@ fn run_write_report(args: &[OsString]) -> ExitCode {
 }
 
 fn run_queue(args: &[OsString]) -> ExitCode {
+    // The queue grammar is variable-arity, the one runner whose
+    // shape is a loop over --changed pairs rather than a fixed
+    // shape predicate. A dangling or unrecognised token is a
+    // usage error, never something silently ignored.
     let usage = "usage: looseleaf queue <bundle> --at <timestamp> [--changed <path>]...";
     if args.len() < 3 || args[1].to_str() != Some("--at") {
         eprintln!("{usage}");

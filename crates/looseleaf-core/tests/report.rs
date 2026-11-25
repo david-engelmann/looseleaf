@@ -226,6 +226,71 @@ fn the_checker_warns_on_a_report_missing_a_section() {
     );
 }
 
+#[test]
+fn an_unstamped_report_is_healed_before_the_append() {
+    let dir = fixture_copy("healing");
+    fs::create_dir_all(dir.join("synthesis")).expect("make the layer");
+    fs::write(
+        dir.join("synthesis/index.md"),
+        "# Synthesis\n\n* [Synthesis report 2026-11-24](2026-11-24-190602.md)\n",
+    )
+    .expect("write the index");
+    fs::write(
+        dir.join(REL),
+        "---\ntype: Synthesis\ntitle: \"Synthesis report 2026-11-24\"\ndescription: \"The synthesis pass report for 2026-11-24, written by the pass under its contract.\"\n---\n\n# Synthesis report 2026-11-24\n\n## Promotions\n\n## Supersessions\n\n## Regenerated\n\n## Flags\n\n## Blocked\n\n## Re-verification queue\n",
+    )
+    .expect("write an unstamped report, as an interrupted creation leaves");
+    append_report_entry(&dir, AT, ReportSection::Flags, "A flag").expect("append the entry");
+    let text = fs::read_to_string(dir.join(REL)).expect("read the report");
+    assert!(
+        text.contains("generated:"),
+        "the append heals the missing stamp, got:\n{text}"
+    );
+    assert!(text.contains("- A flag"));
+    let report = check_bundle(&dir);
+    assert_eq!(report.findings.len(), 0, "got {:?}", report.findings);
+}
+
+#[test]
+fn a_fenced_heading_is_content_not_a_section() {
+    let dir = fixture_copy("fence");
+    append_report_entry(&dir, AT, ReportSection::Flags, "A flag").expect("create the report");
+    let path = dir.join(REL);
+    let text = fs::read_to_string(&path).expect("read the report");
+    let fenced = text.replace(
+        "## Promotions\n",
+        "```\n## Promotions\n```\n\n## Promotions\n",
+    );
+    assert_ne!(fenced, text);
+    fs::write(&path, &fenced).expect("plant the fenced heading");
+    append_report_entry(&dir, AT, ReportSection::Promotions, "A real promotion")
+        .expect("append the entry");
+    let text = fs::read_to_string(&path).expect("read the report");
+    let fence_end = text.find("```\n\n## Promotions").expect("the fenced block");
+    let entry = text.find("- A real promotion").expect("the entry");
+    assert!(entry > fence_end, "the entry lands in the real section");
+    let report = check_bundle(&dir);
+    assert_eq!(report.findings.len(), 0, "got {:?}", report.findings);
+}
+
+#[test]
+fn the_checker_warns_on_out_of_order_sections_and_an_uppercase_extension() {
+    let dir = fixture_copy("order");
+    fs::create_dir_all(dir.join("synthesis")).expect("make the layer");
+    fs::write(dir.join("synthesis/index.md"), "# Synthesis\n").expect("write the index");
+    let body = "---\ntype: Synthesis\ntitle: \"Synthesis report 2026-11-24\"\ndescription: \"The synthesis pass report for 2026-11-24, written by the pass under its contract.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-24T19:06:02Z\" }\n---\n\n# Synthesis report 2026-11-24\n\n## Flags\n\n## Promotions\n\n## Supersessions\n\n## Regenerated\n\n## Blocked\n\n## Re-verification queue\n";
+    fs::write(dir.join("synthesis/2026-11-24-190602.MD"), body).expect("write the report");
+    let report = check_bundle(&dir);
+    let shape: Vec<&str> = report
+        .findings
+        .iter()
+        .filter(|finding| finding.code == "REPORT_SHAPE")
+        .map(|finding| finding.message.as_str())
+        .collect();
+    assert_eq!(shape.len(), 1, "got {:?}", report.findings);
+    assert!(shape[0].contains("out of contract order"), "got {shape:?}");
+}
+
 #[cfg(unix)]
 #[test]
 fn write_report_refuses_a_symlinked_synthesis_directory() {

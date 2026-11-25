@@ -11,6 +11,7 @@
 //! says stays the host's judgment under the contract. The writer
 //! enforces the line shape and the file shape, nothing more.
 
+use std::fmt::Write as _;
 use std::fs;
 use std::path::Path;
 
@@ -18,8 +19,8 @@ use crate::bundle::{Layer, read_bundle};
 use crate::check::is_calendar_date;
 use crate::frontmatter::{Value, parse_document};
 use crate::indexes::regenerate_layer;
-use crate::stamps::{PASS_ACTOR, stamp_generated};
-use crate::write::{invalid_input, line_ending};
+use crate::stamps::{PASS_ACTOR, stamp_generated, stamp_parts};
+use crate::write::{bare_segment, invalid_input, line_ending, write_via_temp};
 
 /// The six section headings of a pass report, in contract order.
 pub const REPORT_HEADINGS: [&str; 6] = [
@@ -94,49 +95,38 @@ pub(crate) fn is_report_stem(stem: &str) -> bool {
 /// Split a report stamp into its date and its six digit time,
 /// refusing any stamp that does not carry a real calendar date
 /// and a real time of day, since the two become the file name.
+/// The validation is the stamps module's whole-stamp rule, with
+/// the time required here rather than optional.
 fn report_stamp_parts(at: &str) -> std::io::Result<(String, String)> {
-    let refused = || {
-        invalid_input(format!(
+    match stamp_parts(at) {
+        Some((date, Some(time))) => Ok((date.to_owned(), time)),
+        _ => Err(invalid_input(format!(
             "the stamp {at} must carry a real calendar date and time, as 2026-11-24T19:06:02Z"
-        ))
-    };
-    let Some(date) = at.get(..10) else {
-        return Err(refused());
-    };
-    if !is_calendar_date(date) || at.get(10..11) != Some("T") {
-        return Err(refused());
+        ))),
     }
-    let Some(time) = at.get(11..19) else {
-        return Err(refused());
-    };
-    let digits =
-        |range: std::ops::Range<usize>| time.get(range).and_then(|part| part.parse::<u32>().ok());
-    let (Some(hours), Some(minutes), Some(seconds)) = (digits(0..2), digits(3..5), digits(6..8))
-    else {
-        return Err(refused());
-    };
-    if time.get(2..3) != Some(":")
-        || time.get(5..6) != Some(":")
-        || hours > 23
-        || minutes > 59
-        || seconds > 59
-    {
-        return Err(refused());
-    }
-    Ok((
-        date.to_owned(),
-        format!("{hours:02}{minutes:02}{seconds:02}"),
-    ))
 }
 
-fn bare_segment(segment: &str) -> &str {
-    segment.trim_end_matches(['\n', '\r'])
-}
-
-fn write_report_file(target: &Path, text: &str) -> std::io::Result<()> {
-    let temp = target.with_extension("md.tmp-looseleaf");
-    fs::write(&temp, text)?;
-    fs::rename(&temp, target)
+/// Create the run's report concept with all six sections in
+/// contract order, then stamp its `generated` through the Slice 1
+/// stamp, so the one construction of that mapping serves both.
+/// The section headings come from the same constant the checker
+/// reads, so the writer and the audit cannot drift apart.
+fn create_report(
+    root: &Path,
+    rel: &str,
+    target: &Path,
+    date: &str,
+    at: &str,
+) -> std::io::Result<()> {
+    let mut text = format!(
+        "---\ntype: Synthesis\ntitle: \"Synthesis report {date}\"\ndescription: \"The synthesis pass report for {date}, written by the pass under its contract.\"\n---\n\n# Synthesis report {date}\n"
+    );
+    for heading in REPORT_HEADINGS {
+        let _ = write!(text, "\n## {heading}\n");
+    }
+    write_via_temp(target, &text)?;
+    stamp_generated(root, rel, PASS_ACTOR, at)?;
+    Ok(())
 }
 
 /// Append one entry to one section of the run's Synthesis report
@@ -184,11 +174,7 @@ pub fn append_report_entry(
     let target = root.join(&rel);
     let mut created = false;
     if !target.exists() {
-        let text = format!(
-            "---\ntype: Synthesis\ntitle: \"Synthesis report {date}\"\ndescription: \"The synthesis pass report for {date}, written by the pass under its contract.\"\n---\n\n# Synthesis report {date}\n\n## Promotions\n\n## Supersessions\n\n## Regenerated\n\n## Flags\n\n## Blocked\n\n## Re-verification queue\n"
-        );
-        write_report_file(&target, &text)?;
-        stamp_generated(root, &rel, PASS_ACTOR, at)?;
+        create_report(root, &rel, &target, &date, at)?;
         created = true;
     }
     let text = fs::read_to_string(&target)?;
@@ -203,24 +189,76 @@ pub fn append_report_entry(
             "the report at {rel} does not carry type Synthesis"
         )));
     }
-    let eol = line_ending(&text);
+    // A creation interrupted between the file write and its
+    // stamp leaves a report with no generated entry. Heal it
+    // here rather than appending over a report that lacks its
+    // run stamp, so the state the checker would flag as an error
+    // is never the state this writer reports success over.
+    let carries_generated = document
+        .frontmatter
+        .as_ref()
+        .is_some_and(|frontmatter| frontmatter.get("generated").is_some());
+    let text = if carries_generated {
+        text
+    } else {
+        stamp_generated(root, &rel, PASS_ACTOR, at)?;
+        fs::read_to_string(&target)?
+    };
+    let out = append_to_section(&text, &rel, section, entry)?;
+    write_via_temp(&target, &out)?;
+    if created || !root.join("synthesis/index.md").exists() {
+        let bundle = read_bundle(root);
+        regenerate_layer(root, &bundle, Layer::Synthesis)?;
+    }
+    Ok(rel)
+}
+
+/// Insert an entry at the end of its section in an existing
+/// report body. The heading search is fence aware, so a heading
+/// quoted inside a code fence is content, never the section, and
+/// the section ends at the next unfenced level two heading.
+/// Existing lines are carried as raw slices, so their endings
+/// survive untouched.
+fn append_to_section(
+    text: &str,
+    rel: &str,
+    section: ReportSection,
+    entry: &str,
+) -> std::io::Result<String> {
+    let eol = line_ending(text);
     let segments: Vec<&str> = text.split_inclusive('\n').collect();
     let heading_line = format!("## {}", section.heading());
-    let Some(heading) = segments
-        .iter()
-        .position(|segment| bare_segment(segment) == heading_line)
-    else {
+    let mut in_fence = false;
+    let mut heading = None;
+    for (index, segment) in segments.iter().enumerate() {
+        let line = bare_segment(segment);
+        if line.starts_with("```") {
+            in_fence = !in_fence;
+            continue;
+        }
+        if !in_fence && line == heading_line {
+            heading = Some(index);
+            break;
+        }
+    }
+    let Some(heading) = heading else {
         return Err(invalid_input(format!(
             "the report at {rel} is missing its {} section",
             section.heading()
         )));
     };
     let mut insert_after = heading;
+    let mut in_fence = false;
     for (index, segment) in segments.iter().enumerate().skip(heading + 1) {
-        if bare_segment(segment).starts_with("## ") {
+        let line = bare_segment(segment);
+        if line.starts_with("```") {
+            in_fence = !in_fence;
+            continue;
+        }
+        if !in_fence && line.starts_with("## ") {
             break;
         }
-        if !bare_segment(segment).trim().is_empty() {
+        if !line.trim().is_empty() {
             insert_after = index;
         }
     }
@@ -234,10 +272,5 @@ pub fn append_report_entry(
     for segment in &segments[insert_after + 1..] {
         out.push_str(segment);
     }
-    write_report_file(&target, &out)?;
-    if created || !root.join("synthesis/index.md").exists() {
-        let bundle = read_bundle(root);
-        regenerate_layer(root, &bundle, Layer::Synthesis)?;
-    }
-    Ok(rel)
+    Ok(out)
 }

@@ -5,6 +5,7 @@
 mod common;
 
 use std::fs;
+use std::path::Path;
 
 use looseleaf_core::pass::reverification_queue;
 
@@ -37,6 +38,37 @@ fn the_queue_carries_the_changed_set_in_order_without_duplicates() {
     );
     let empty = reverification_queue(&dir, AT, &[]).expect("an empty queue is a queue");
     assert_eq!(empty, Vec::<String>::new());
+}
+
+#[test]
+fn the_queue_never_writes() {
+    let dir = fixture_copy("read-only");
+    let snapshot = |root: &Path| {
+        let mut entries: Vec<(String, Vec<u8>)> = Vec::new();
+        let mut stack = vec![root.to_path_buf()];
+        while let Some(current) = stack.pop() {
+            for entry in fs::read_dir(&current).expect("read a directory") {
+                let entry = entry.expect("a directory entry");
+                let path = entry.path();
+                if path.is_dir() {
+                    stack.push(path);
+                } else {
+                    entries.push((
+                        path.strip_prefix(root)
+                            .expect("under the root")
+                            .to_string_lossy()
+                            .into_owned(),
+                        fs::read(&path).expect("read a file"),
+                    ));
+                }
+            }
+        }
+        entries.sort();
+        entries
+    };
+    let before = snapshot(&dir);
+    reverification_queue(&dir, AT, &paths(&["people/ada.md"])).expect("assemble the queue");
+    assert_eq!(snapshot(&dir), before, "the queue is a list, never an edit");
 }
 
 #[test]
