@@ -302,40 +302,43 @@ pub(crate) fn bare_segment(segment: &str) -> &str {
 /// file is then created with `create_new`, so a path planted
 /// between the removal and the creation refuses the write
 /// instead of being followed. A removal that reports the path
-/// absent is the normal first-write case. Any other removal
-/// failure, and any failure to create the temporary file,
-/// refuses the write with an error naming the temporary path.
+/// absent is the normal first-write case. Every step of the
+/// write refuses the same way on failure, with an error that
+/// names the step and the temporary path and keeps the
+/// underlying failure's kind, since a permission refusal is
+/// not invalid input.
 pub(crate) fn write_via_temp(target: &Path, text: &str) -> std::io::Result<()> {
     use std::io::Write as _;
     let temp = target.with_extension("md.tmp-looseleaf");
     match std::fs::remove_file(&temp) {
         Ok(()) => {}
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => {
-            return Err(invalid_input(format!(
-                "could not clear the temporary file {} beside its target, {error}",
-                temp.display()
-            )));
-        }
+        Err(error) => return Err(temp_refusal("clear", &temp, &error)),
     }
     let mut file = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(&temp)
-        .map_err(|error| {
-            invalid_input(format!(
-                "could not create the temporary file {} beside its target, {error}",
-                temp.display()
-            ))
-        })?;
-    file.write_all(text.as_bytes()).map_err(|error| {
-        invalid_input(format!(
-            "could not write the temporary file {} beside its target, {error}",
-            temp.display()
-        ))
-    })?;
+        .map_err(|error| temp_refusal("create", &temp, &error))?;
+    file.write_all(text.as_bytes())
+        .map_err(|error| temp_refusal("write", &temp, &error))?;
     drop(file);
-    std::fs::rename(&temp, target)
+    std::fs::rename(&temp, target).map_err(|error| temp_refusal("rename", &temp, &error))
+}
+
+/// Build the refusal for a failed step of the temporary
+/// write, naming the step and the temporary path. The error
+/// keeps the underlying failure's kind and gains the
+/// original failure's text at the end of its message, the
+/// shape the checker's own wrapped errors use.
+fn temp_refusal(step: &str, temp: &Path, error: &std::io::Error) -> std::io::Error {
+    std::io::Error::new(
+        error.kind(),
+        format!(
+            "could not {step} the temporary file {} beside its target, {error}",
+            temp.display()
+        ),
+    )
 }
 
 /// Split a top-level frontmatter line into key and remainder, when it

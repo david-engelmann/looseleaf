@@ -356,13 +356,7 @@ fn promotion_lands_before_a_superseded_section_without_blocks() {
 fn a_promotion_does_not_follow_a_symlink_at_its_temp_path() {
     let dir = fixture_copy("promote-temp-symlink");
     let outside =
-        std::env::temp_dir().join(format!("looseleaf-slice3-outside-{}", std::process::id()));
-    fs::write(&outside, "sentinel\n").expect("outside file plantable");
-    std::os::unix::fs::symlink(
-        &outside,
-        dir.join("curated/standing-facts.md.tmp-looseleaf"),
-    )
-    .expect("symlink plantable");
+        common::plant_temp_symlink(&dir, "curated/standing-facts.md.tmp-looseleaf", "slice3");
     let outcome = promote_claim(
         &dir,
         "22222222222222222222222222222222",
@@ -371,28 +365,16 @@ fn a_promotion_does_not_follow_a_symlink_at_its_temp_path() {
     )
     .expect("promote the tea claim");
     assert_eq!(outcome, Promotion::Promoted);
-    assert_eq!(
-        fs::read_to_string(&outside).expect("outside readable"),
-        "sentinel\n",
-        "the file the link points at is untouched"
-    );
-    let target = dir.join("curated/standing-facts.md");
     assert!(
-        !fs::symlink_metadata(&target)
-            .expect("target metadata")
-            .file_type()
-            .is_symlink(),
-        "no symbolic link stands at the target"
-    );
-    assert!(
-        fs::read_to_string(&target)
+        fs::read_to_string(dir.join("curated/standing-facts.md"))
             .expect("target readable")
             .contains("The user prefers tea over coffee."),
         "the promoted claim lands on its target"
     );
-    assert!(
-        fs::symlink_metadata(dir.join("curated/standing-facts.md.tmp-looseleaf")).is_err(),
-        "no temporary file remains beside the target"
+    common::assert_temp_write_not_followed(
+        &dir,
+        "curated/standing-facts.md.tmp-looseleaf",
+        "curated/standing-facts.md",
+        &outside,
     );
-    let _ = fs::remove_file(&outside);
 }

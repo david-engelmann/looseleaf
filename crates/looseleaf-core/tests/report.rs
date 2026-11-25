@@ -319,3 +319,34 @@ fn an_existing_layer_without_an_index_gains_one() {
     let report = check_bundle(&dir);
     assert_eq!(report.findings.len(), 0, "got {:?}", report.findings);
 }
+
+#[cfg(unix)]
+#[test]
+fn a_report_creation_does_not_follow_a_symlink_at_its_temp_path() {
+    let dir = fixture_copy("report-temp-symlink");
+    let outside = common::plant_temp_symlink(
+        &dir,
+        "synthesis/2026-11-24-190602.md.tmp-looseleaf",
+        "report",
+    );
+    let rel = append_report_entry(
+        &dir,
+        AT,
+        ReportSection::Promotions,
+        "Promoted the tea claim.",
+    )
+    .expect("report entry lands");
+    assert_eq!(rel, REL);
+    assert!(
+        fs::read_to_string(dir.join(REL))
+            .expect("report readable")
+            .contains("Promoted the tea claim."),
+        "the entry lands in the created report"
+    );
+    common::assert_temp_write_not_followed(
+        &dir,
+        "synthesis/2026-11-24-190602.md.tmp-looseleaf",
+        REL,
+        &outside,
+    );
+}

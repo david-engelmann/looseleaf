@@ -201,36 +201,41 @@ fn an_append_joins_after_the_last_entry_not_trailing_prose() {
 #[test]
 fn a_log_append_does_not_follow_a_symlink_at_its_temp_path() {
     let dir = fixture_copy("log-temp-symlink");
-    let outside =
-        std::env::temp_dir().join(format!("looseleaf-slice2-outside-{}", std::process::id()));
-    fs::write(&outside, "sentinel\n").expect("outside file plantable");
-    std::os::unix::fs::symlink(&outside, dir.join("daily/log.md.tmp-looseleaf"))
-        .expect("symlink plantable");
+    let outside = common::plant_temp_symlink(&dir, "daily/log.md.tmp-looseleaf", "slice2");
     let rel =
         append_log(&dir, LogScope::Daily, "2026-11-03", "Planted link run.").expect("append lands");
     assert_eq!(rel, "daily/log.md");
-    assert_eq!(
-        fs::read_to_string(&outside).expect("outside readable"),
-        "sentinel\n",
-        "the file the link points at is untouched"
-    );
-    let target = dir.join("daily/log.md");
     assert!(
-        !fs::symlink_metadata(&target)
-            .expect("target metadata")
-            .file_type()
-            .is_symlink(),
-        "no symbolic link stands at the target"
-    );
-    assert!(
-        fs::read_to_string(&target)
+        fs::read_to_string(dir.join("daily/log.md"))
             .expect("log readable")
             .contains("Planted link run."),
         "the entry lands in the log"
     );
-    assert!(
-        fs::symlink_metadata(dir.join("daily/log.md.tmp-looseleaf")).is_err(),
-        "no temporary file remains beside the target"
+    common::assert_temp_write_not_followed(
+        &dir,
+        "daily/log.md.tmp-looseleaf",
+        "daily/log.md",
+        &outside,
     );
-    let _ = fs::remove_file(&outside);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_root_index_regeneration_does_not_follow_a_symlink_at_its_temp_path() {
+    let dir = fixture_copy("root-temp-symlink");
+    let original = fs::read_to_string(dir.join("index.md")).expect("read root index");
+    let stale = original.replace(
+        "* [People](people/) - 1 concept",
+        "* [People](people/) - 9 concepts",
+    );
+    fs::write(dir.join("index.md"), stale).expect("make the body stale");
+    let outside = common::plant_temp_symlink(&dir, "index.md.tmp-looseleaf", "slice2-root");
+    let written = regenerate_root_index(&dir).expect("regenerate root index");
+    assert_eq!(written.as_deref(), Some("index.md"));
+    assert_eq!(
+        fs::read_to_string(dir.join("index.md")).expect("read restored index"),
+        original,
+        "the root index is regenerated on its target"
+    );
+    common::assert_temp_write_not_followed(&dir, "index.md.tmp-looseleaf", "index.md", &outside);
 }
