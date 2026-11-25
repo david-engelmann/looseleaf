@@ -15,8 +15,9 @@
 //! mechanics of staleness reporting and claim promotion, through
 //! byte-stable writers that preserve whatever they do not own. The
 //! pass paperwork lives here too, the frontmatter stamps, the
-//! Synthesis report concept each run is audited against, and the
-//! re-verification queue a pass hands on. It
+//! Synthesis report concept each run is audited against, the
+//! re-verification queue a pass hands on, and the deprecation of
+//! a concept in favour of its replacement. It
 //! never calls a model. The judgment half of looseleaf, the synthesis
 //! pass that decides what to promote and what to supersede, ships as
 //! a written contract that a host agent executes. See DECISIONS.md in

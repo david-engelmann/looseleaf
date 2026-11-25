@@ -186,6 +186,9 @@ fn deprecate_prints_its_pinned_lines() {
 
 #[test]
 fn usage_errors_exit_two() {
+    let dir = fixture_copy("usage-deprecate");
+    let outcome = run(&dir, &["deprecate", "--path", "people/ada.md"]);
+    assert_eq!(outcome.code, 2, "stderr {}", outcome.stderr);
     let dir = fixture_copy("usage");
     let outcome = run(
         &dir,
