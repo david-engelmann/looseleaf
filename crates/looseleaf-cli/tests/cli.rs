@@ -260,3 +260,19 @@ fn usage_errors_exit_two() {
     let outcome = run(&dir, &["stamp-generated", "--path", "people/ada.md"]);
     assert_eq!(outcome.code, 2, "a short argument list is a usage error");
 }
+
+#[test]
+fn check_escapes_its_finding_lines() {
+    let dir = fixture_copy("check-escape");
+    fs::write(
+        dir.join("curated/weird\nname.md"),
+        "---\ntype: Curated Memory\ntitle: \"Weird name\"\ndescription: \"A concept whose file name and replacement both carry line breaks.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nsources:\n  - id: day-one\n    resource: daily/2026-11-01.md\n    title: Daily log for 2026-11-01\nsuperseded_by: \"curated/no\\nsuch.md\"\n---\n\n# Weird name\n\nBody text.\n",
+    )
+    .expect("plant the concept");
+    let outcome = run(&dir, &["check"]);
+    assert_eq!(outcome.code, 1, "stderr: {}", outcome.stderr);
+    assert_eq!(
+        outcome.stdout,
+        "WARN FM_STATUS curated/weird\\nname.md: the concept names a superseded_by replacement but its status is not deprecated\nERROR FM_SUPERSEDED_BY curated/weird\\nname.md: superseded_by names curated/no\\nsuch.md, which does not resolve to curated/no\\nsuch.md in the bundle\nchecked 23 files, 1 errors, 1 warnings\n"
+    );
+}

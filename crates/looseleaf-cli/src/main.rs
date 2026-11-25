@@ -78,8 +78,8 @@ fn run_check(args: &[OsString]) -> ExitCode {
             "{} {} {}: {}",
             finding.severity.label(),
             finding.code,
-            finding.path,
-            finding.message
+            escape_line_field(&finding.path),
+            escape_line_field(&finding.message)
         );
     }
     println!(
@@ -205,11 +205,12 @@ fn run_append_log(args: &[OsString]) -> ExitCode {
 
 /// Escape a bundle-derived field for one printed line. The
 /// staleness lines are pasted into the pass report that audits
-/// the run, so a field carrying a line break would forge extra
-/// lines in that record. Backslashes double first, then a line
-/// break and a carriage return render as two-character
-/// sequences. The core report's own values are never escaped,
-/// only what this printer puts on the line.
+/// the run and the check lines are banked as evidence in the
+/// records that quote them, so a field carrying a line break
+/// would forge extra lines in that record. Backslashes double
+/// first, then a line break and a carriage return render as
+/// two-character sequences. The core report's own values are
+/// never escaped, only what this printer puts on the line.
 fn escape_line_field(value: &str) -> String {
     value
         .replace('\\', "\\\\")
