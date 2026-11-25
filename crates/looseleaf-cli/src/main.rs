@@ -311,22 +311,23 @@ fn run_stamp_generated(args: &[OsString]) -> ExitCode {
 }
 
 fn run_deprecate(args: &[OsString]) -> ExitCode {
-    let usage =
-        "usage: looseleaf deprecate <bundle> --path <path> --superseded-by <path> --at <timestamp>";
-    if args.len() != 7 || args[1] != "--path" || args[3] != "--superseded-by" || args[5] != "--at" {
-        eprintln!("{usage}");
+    let shape_ok = args.len() == 7
+        && args[1].to_str() == Some("--path")
+        && args[3].to_str() == Some("--superseded-by")
+        && args[5].to_str() == Some("--at");
+    if !shape_ok {
+        eprintln!(
+            "usage: looseleaf deprecate <bundle> --path <path> --superseded-by <path> --at <timestamp>"
+        );
         return ExitCode::from(2);
     }
-    let (Ok(root), Ok(path), Ok(replacement), Ok(at)) = (
-        str_arg(&args[0]),
-        str_arg(&args[2]),
-        str_arg(&args[4]),
-        str_arg(&args[6]),
-    ) else {
-        eprintln!("{usage}");
+    let (Some(path), Some(replacement), Some(at)) =
+        (args[2].to_str(), args[4].to_str(), args[6].to_str())
+    else {
+        eprintln!("the --path, --superseded-by and --at values must be valid UTF-8");
         return ExitCode::from(2);
     };
-    match looseleaf_core::stamps::deprecate_concept(Path::new(root), path, replacement, at) {
+    match looseleaf_core::stamps::deprecate_concept(Path::new(&args[0]), path, replacement, at) {
         Ok(looseleaf_core::stamps::Deprecation::Deprecated) => {
             println!("concept deprecated, {path}");
             ExitCode::SUCCESS
