@@ -1,6 +1,7 @@
 //! Integration tests for the frontmatter stamps. The stamp shapes
-//! are asserted through the parsed frontmatter and the checker, and
-//! every refusal is asserted to write nothing.
+//! are asserted through the parsed frontmatter and the checker.
+//! Refusals are asserted to leave the refused file byte-identical
+//! where a file exists to compare.
 
 mod common;
 
@@ -150,6 +151,8 @@ fn stamps_refuse_the_files_they_may_not_touch() {
         ("directives/standing-order.md", "directive"),
     ];
     for (path, phrase) in cases {
+        let target = dir.join(path);
+        let before = fs::read_to_string(&target).ok();
         let error = stamp_generated(&dir, path, PASS_ACTOR, "2026-11-24T00:00:00Z")
             .expect_err("stamp generated must refuse");
         assert!(
@@ -161,6 +164,11 @@ fn stamps_refuse_the_files_they_may_not_touch() {
         assert!(
             error.to_string().contains(phrase),
             "for {path}, got {error}"
+        );
+        assert_eq!(
+            fs::read_to_string(&target).ok(),
+            before,
+            "a refusal writes nothing, for {path}"
         );
     }
 }
@@ -180,12 +188,86 @@ fn stamps_validate_their_arguments() {
         error.to_string().contains("real calendar date"),
         "got {error}"
     );
+    let error = stamp_verified(&dir, "people/ada.md", "checker", "2026-11-24T99:99:99Z")
+        .expect_err("an impossible time must refuse");
+    assert!(
+        error.to_string().contains("real calendar date"),
+        "got {error}"
+    );
+    let error = stamp_verified(&dir, "people/ada.md", "checker", "2026-11-24T19:06:02junk")
+        .expect_err("a garbage stamp tail must refuse");
+    assert!(
+        error.to_string().contains("real calendar date"),
+        "got {error}"
+    );
     let error = stamp_verified(&dir, "people/ada.md", "", "2026-11-24T00:00:00Z")
         .expect_err("an empty actor must refuse");
     assert!(error.to_string().contains("non-empty"), "got {error}");
     let error = stamp_verified(&dir, "people/ada.md", "two\nlines", "2026-11-24T00:00:00Z")
         .expect_err("a two line actor must refuse");
     assert!(error.to_string().contains("non-empty"), "got {error}");
+}
+
+#[test]
+fn stamp_verified_validates_the_whole_list_before_the_duplicate_check() {
+    let dir = fixture_copy("list-tail");
+    let path = dir.join("people/ada.md");
+    let text = fs::read_to_string(&path).expect("read ada");
+    let mutated = text.replace(
+        "generated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }",
+        "generated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nverified:\n  - by: checker\n    at: \"2026-11-24T09:00:00Z\"\n  - soon",
+    );
+    assert_ne!(mutated, text);
+    fs::write(&path, &mutated).expect("write the mutation");
+    let error = stamp_verified(&dir, "people/ada.md", "checker", "2026-11-24T09:00:00Z")
+        .expect_err("a malformed tail item must refuse even when the stamp duplicates the head");
+    assert!(error.to_string().contains("not a mapping"), "got {error}");
+    let mutated_empty = mutated.replace(
+        "verified:\n  - by: checker\n    at: \"2026-11-24T09:00:00Z\"\n  - soon",
+        "verified: []",
+    );
+    fs::write(&path, &mutated_empty).expect("write the empty list");
+    let error = stamp_verified(&dir, "people/ada.md", "checker", "2026-11-24T09:00:00Z")
+        .expect_err("an empty verified list must refuse");
+    assert!(error.to_string().contains("not a mapping"), "got {error}");
+}
+
+#[test]
+fn stamp_verified_extends_a_record_that_carries_an_extra_scalar() {
+    let dir = fixture_copy("extra-scalar");
+    let path = dir.join("people/ada.md");
+    let text = fs::read_to_string(&path).expect("read ada");
+    let mutated = text.replace(
+        "generated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }",
+        "generated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nverified:\n  by: checker\n  at: \"2026-11-24T09:00:00Z\"\n  basis: spot check",
+    );
+    assert_ne!(mutated, text);
+    fs::write(&path, &mutated).expect("write the mutation");
+    let outcome = stamp_verified(&dir, "people/ada.md", "reviewer", "2026-11-24T10:00:00Z")
+        .expect("a record with an extra scalar entry is extendable, as the checker accepts it");
+    assert_eq!(outcome, Stamp::Stamped);
+    assert_eq!(verified_records(&dir, "people/ada.md").len(), 2);
+}
+
+#[test]
+fn stamp_verified_refuses_output_its_own_reader_cannot_take_back() {
+    let dir = fixture_copy("extra-list");
+    let path = dir.join("people/ada.md");
+    let text = fs::read_to_string(&path).expect("read ada");
+    let mutated = text.replace(
+        "generated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }",
+        "generated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nverified:\n  by: checker\n  at: \"2026-11-24T09:00:00Z\"\n  basis: [spot check, second pair]",
+    );
+    assert_ne!(mutated, text);
+    fs::write(&path, &mutated).expect("write the mutation");
+    // Wrapping this record into a list carries its nested list
+    // past the depth the subset parser reads, so the rendered
+    // output would not parse. The stamp refuses and writes
+    // nothing rather than leaving an unreadable file behind.
+    let error = stamp_verified(&dir, "people/ada.md", "reviewer", "2026-11-24T10:00:00Z")
+        .expect_err("output the reader cannot take back must refuse");
+    assert!(error.to_string().contains("cannot parse"), "got {error}");
+    assert_eq!(fs::read_to_string(&path).expect("reread"), mutated);
 }
 
 #[test]

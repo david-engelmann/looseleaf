@@ -619,20 +619,52 @@ fn check_person_sections(file: &ConceptFile, out: &mut Findings) {
 /// A synthesis file named as a pass report carries the report
 /// shape the writer creates, six sections in contract order. A
 /// synthesis concept under any other name is not the writer's
-/// business and is left alone.
+/// business and is left alone. The walker collects Markdown
+/// case-insensitively, so the name test here is too, and a
+/// heading quoted inside a code fence is content, not a section.
 fn check_report_shape(file: &ConceptFile, out: &mut Findings) {
     let name = file.rel_path.rsplit('/').next().unwrap_or_default();
-    let stem = name.strip_suffix(".md").unwrap_or(name);
+    let stem = match name.get(name.len().saturating_sub(3)..) {
+        Some(suffix) if suffix.eq_ignore_ascii_case(".md") => {
+            name.get(..name.len() - 3).unwrap_or(name)
+        }
+        _ => name,
+    };
     if !crate::report::is_report_stem(stem) {
         return;
     }
-    let mut missing: Vec<&str> = Vec::new();
-    for section in crate::report::REPORT_HEADINGS {
-        let heading = format!("## {section}");
-        if !file.body.lines().any(|line| line.trim_end() == heading) {
-            missing.push(section);
+    let mut positions: Vec<Option<usize>> = Vec::new();
+    let mut in_fence = false;
+    let mut found: Vec<(usize, &str)> = Vec::new();
+    for (index, line) in file.body.lines().enumerate() {
+        let line = line.trim_end();
+        if line.starts_with("```") {
+            in_fence = !in_fence;
+            continue;
+        }
+        if in_fence {
+            continue;
+        }
+        for section in crate::report::REPORT_HEADINGS {
+            if line == format!("## {section}") {
+                found.push((index, section));
+            }
         }
     }
+    for section in crate::report::REPORT_HEADINGS {
+        positions.push(
+            found
+                .iter()
+                .find(|(_, name)| *name == section)
+                .map(|(index, _)| *index),
+        );
+    }
+    let missing: Vec<&str> = crate::report::REPORT_HEADINGS
+        .iter()
+        .zip(&positions)
+        .filter(|(_, position)| position.is_none())
+        .map(|(section, _)| *section)
+        .collect();
     if !missing.is_empty() {
         out.warning(
             "REPORT_SHAPE",
@@ -645,6 +677,18 @@ fn check_report_shape(file: &ConceptFile, out: &mut Findings) {
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
+        );
+        return;
+    }
+    let ordered = positions
+        .iter()
+        .map(|position| position.expect("presence was just checked"))
+        .collect::<Vec<_>>();
+    if ordered.windows(2).any(|pair| pair[0] > pair[1]) {
+        out.warning(
+            "REPORT_SHAPE",
+            &file.rel_path,
+            "pass report carries its six sections out of contract order".to_owned(),
         );
     }
 }

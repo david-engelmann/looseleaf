@@ -544,3 +544,46 @@ report carries the queue the tool printed. The general queue
 mechanism for any bundle remains the upkeep engine's under
 the design record's boundary, surfaced in D20. This command is
 the looseleaf pass's own instance.
+
+## D23. Phase 3 checkpoint repairs (2026-11-24)
+
+The phase checkpoint reviews over the landed slices found no
+defect that corrupts a bundle, and the repairs below. Stamp
+validation now covers the whole stamp through one shared rule,
+a real calendar date plus an optional real time with digit
+checks and at most a trailing Z, because the staleness report
+orders stamps as strings and a garbage tail falsified that
+order within the day. The report writer requires the time and
+derives its file name from the same rule, so two runs at
+different instants can no longer share one report through an
+unvalidated tail. A report left unstamped by an interrupted
+creation is healed on the next append instead of being appended
+over forever. The checker's report shape test strips the file
+extension case-insensitively, matching the walker, reads
+sections fence-aware, and warns when the six sections stand
+out of the contract order the profile states. The report
+writer's heading search is fence aware on the same reasoning.
+The created report's section headings are rendered from the
+same constant the checker reads, so the two cannot drift. The
+stamp's record reading now matches the checker's rule exactly,
+scalar by and at required, other entries ignored, the whole
+verified list validated before the duplicate check runs, and
+an empty list refused as the malformed shape the checker flags.
+Both stamps also re-read their own rendered output before
+writing and refuse when it no longer parses, because wrapping
+a record into a list can carry a nested value past the depth
+the subset parser reads, and a stamp never writes a document
+its own reader cannot take back.
+The queue refuses a path carrying a line break, since its
+output is pasted into the report as the audited record. The
+sibling temp and rename write and the bare segment helper are
+shared from the writer module now, and the command line surface
+gained end-to-end tests pinning the four subcommands' output
+lines and usage exits. Two findings were accepted without
+change. The fixed predictable temp path beside each target is
+the standing house pattern from the earlier writers, on the
+owner's own tree. Two runs sharing one wall clock second still
+share one report file, since the name is derived from the
+run's stamp and nothing else the tool may use distinguishes
+them, and telling such runs apart is the caller's stamp
+discipline.

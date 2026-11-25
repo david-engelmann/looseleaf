@@ -154,6 +154,11 @@ pub fn reverification_queue(
     let bundle = read_bundle(root);
     let mut queue: Vec<String> = Vec::new();
     for path in changed {
+        if path.contains(['\n', '\r']) {
+            return Err(invalid(
+                "a queue path carries a line break, and the queue is printed as lines".to_owned(),
+            ));
+        }
         let Some(file) = bundle.files.iter().find(|file| &file.rel_path == path) else {
             return Err(not_found(format!("no file at {path} in the bundle")));
         };
