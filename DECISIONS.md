@@ -808,3 +808,76 @@ checkpoint recorded for the same pattern. The helper's
 call sites keep two idioms, import and full path, each
 file consistent with its own standing style for the same
 module.
+
+## D30. Phase 7 design dispositions (2026-11-25)
+
+Two standings from the earlier phases are reversed here,
+by name. The non-ASCII line separators standing outside
+the escaping alphabet, accepted in D27 and carried in
+D28's standing list, is reversed. The ground D27 recorded
+was a definition, that the ASCII pair is the record's
+line discipline, and the readers of the banked records
+decide the question the other way, since Python's
+splitlines and several editors and log readers treat the
+line tabulation, the form feed, the next line control,
+the line separator and the paragraph separator as line
+boundaries too. The printer's helper now renders all five
+as backslash u escapes beside the ASCII pair, and the
+Phase 6 ground that widening would alter landed lines is
+answered on the banked output, since no landed staleness,
+queue or check line carries one of the five, a claim that
+rests on the banked transcripts and the prototype bundle's
+file names rather than on a mechanical census. Three
+further characters splitlines alone treats as boundaries,
+the information separators U+001C through U+001E, stand
+outside the alphabet by name, since no editor or log
+reader the phase can name breaks a line on them. As part
+of the same reversal's completion, the re-verification
+queue's refusal of a path carrying a line break widens to
+the same seven characters the printer escapes, one set
+stated in two places, since the queue prints one line per
+path and its refusal is the only protection those lines
+have. The promotion reason refusal keeps the ASCII pair
+deliberately, since a written bundle file is read by the
+tool's own parser, whose line discipline is the line feed
+alone, and the written record's boundary is the parser's,
+not the transcript's.
+
+The second reversal is D29's acceptance of the planted
+concept document standing verbatim in two crates' tests
+as inherent. The harnesses cannot be shared and the
+documents can, since the CLI tests already reach into the
+core crate's fixture tree for their bundle copies, and
+the phase's second slice moves all three verbatim plant
+documents, the check plant, the staleness plant and the
+separator plant this entry's phase adds, into shared
+fixture files outside the clean fixture, the plant names
+standing inline in both crates as the recorded residue.
+The same slice takes up D29's second acceptance, the
+helper's two call-site idioms, and unifies them on the
+import form at the four full-path call sites in
+indexes.rs, registry.rs and stamps.rs. The remaining
+standings are re-weighed and stand. The one-second report
+collision stands on D23's recorded reason, with this
+phase's observation added that the report protocol is
+several appends under one stamp by design, so a file
+already standing at the run's name is the normal case the
+writer must join rather than a collision it could detect.
+D20's companion acceptances stand on their recorded
+reasons, report appends not idempotent matching the log
+writer, and a restamp over another actor's generated
+stamp proceeding without a warning, the diff in the
+bundle's history being the record of the change of hands.
+The cycle walk's cubic cost stands on termination and
+correctness rather than on bundle scale alone, since the
+checker runs over trees whose provenance is not yet
+trusted and a crafted long chain makes the walk slow on
+input the tool is expected to face, and it terminates by
+its position check and is never wrong. The unextracted
+walk skeleton stands on its third-walk trigger, which the
+chain follow in stamps.rs does not trip, since it walks
+toward a named target and extracts no ring. The registry
+in the walk's node set stands as correct detection, and
+the write_body window stands under the contract's
+single-writer term. The success lines and the stderr lines
+stand raw on the reasoning D28 recorded.

@@ -276,3 +276,38 @@ fn check_escapes_its_finding_lines() {
         "WARN FM_STATUS curated/weird\\nname.md: the concept names a superseded_by replacement but its status is not deprecated\nERROR FM_SUPERSEDED_BY curated/weird\\nname.md: superseded_by names curated/no\\nsuch.md, which does not resolve to curated/no\\nsuch.md in the bundle\nchecked 23 files, 1 errors, 1 warnings\n"
     );
 }
+
+#[test]
+fn check_escapes_the_separator_characters() {
+    let dir = fixture_copy("check-separator");
+    fs::write(
+        dir.join("curated/weird\u{2028}na\u{b}me.md"),
+        "---\ntype: Curated Memory\ntitle: \"Separator name\"\ndescription: \"A concept whose file name and replacement carry the separator characters.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nsources:\n  - id: day-one\n    resource: daily/2026-11-01.md\n    title: Daily log for 2026-11-01\nsuperseded_by: \"curated/no\u{85}\u{c}such\u{2029}.md\"\n---\n\n# Separator name\n\nBody text.\n",
+    )
+    .expect("plant the concept");
+    let outcome = run(&dir, &["check"]);
+    assert_eq!(outcome.code, 1, "stderr: {}", outcome.stderr);
+    assert_eq!(
+        outcome.stdout,
+        "WARN FM_STATUS curated/weird\\u2028na\\u000bme.md: the concept names a superseded_by replacement but its status is not deprecated\nERROR FM_SUPERSEDED_BY curated/weird\\u2028na\\u000bme.md: superseded_by names curated/no\\u0085\\u000csuch\\u2029.md, which does not resolve to curated/no\\u0085\\u000csuch\\u2029.md in the bundle\nchecked 23 files, 1 errors, 1 warnings\n"
+    );
+}
+
+#[test]
+fn check_doubles_a_literal_separator_escape() {
+    // A value carrying the literal characters backslash u 2028
+    // prints with its backslash doubled, distinguishable from
+    // an escaped real line separator, which prints single.
+    let dir = fixture_copy("check-literal-escape");
+    fs::write(
+        dir.join("curated/plain-name.md"),
+        "---\ntype: Curated Memory\ntitle: \"Plain name\"\ndescription: \"A concept whose replacement carries a literal escape sequence.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nsources:\n  - id: day-one\n    resource: daily/2026-11-01.md\n    title: Daily log for 2026-11-01\nsuperseded_by: \"curated/no\\\\u2028such.md\"\n---\n\n# Plain name\n\nBody text.\n",
+    )
+    .expect("plant the concept");
+    let outcome = run(&dir, &["check"]);
+    assert_eq!(outcome.code, 1, "stderr: {}", outcome.stderr);
+    assert_eq!(
+        outcome.stdout,
+        "WARN FM_STATUS curated/plain-name.md: the concept names a superseded_by replacement but its status is not deprecated\nERROR FM_SUPERSEDED_BY curated/plain-name.md: superseded_by names curated/no\\\\u2028such.md, which does not resolve to curated/no\\\\u2028such.md in the bundle\nchecked 23 files, 1 errors, 1 warnings\n"
+    );
+}
