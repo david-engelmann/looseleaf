@@ -44,3 +44,71 @@ pub fn fixture_copy(prefix: &str, name: &str) -> PathBuf {
     copy_dir(&clean_fixture(), &dir);
     dir
 }
+
+/// A sentinel file outside a fixture bundle that a planted
+/// symbolic link points at. The file is removed when the
+/// guard drops, so a failed assertion cleans up as well as
+/// a passed one.
+#[cfg(unix)]
+pub struct OutsideSentinel {
+    path: PathBuf,
+}
+
+#[cfg(unix)]
+impl OutsideSentinel {
+    /// The sentinel file's path.
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+#[cfg(unix)]
+impl Drop for OutsideSentinel {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.path);
+    }
+}
+
+/// Plant a symbolic link at a bundle writer's temporary
+/// path, pointing at a fresh sentinel file outside the
+/// bundle, and return the sentinel's guard. The tag names
+/// the calling test file, so concurrent test files never
+/// share a sentinel.
+#[cfg(unix)]
+pub fn plant_temp_symlink(bundle: &Path, temp_rel: &str, tag: &str) -> OutsideSentinel {
+    let outside =
+        std::env::temp_dir().join(format!("looseleaf-outside-{tag}-{}", std::process::id()));
+    fs::write(&outside, "sentinel\n").expect("outside file plantable");
+    std::os::unix::fs::symlink(&outside, bundle.join(temp_rel)).expect("symlink plantable");
+    OutsideSentinel { path: outside }
+}
+
+/// Assert what a writer facing a planted temp link must
+/// have done. The file the link points at is untouched, no
+/// symbolic link stands at the target, and no temporary
+/// file remains beside it. The write's own landing is the
+/// calling test's assertion to make.
+#[cfg(unix)]
+pub fn assert_temp_write_not_followed(
+    bundle: &Path,
+    temp_rel: &str,
+    target_rel: &str,
+    outside: &OutsideSentinel,
+) {
+    assert_eq!(
+        fs::read_to_string(outside.path()).expect("outside readable"),
+        "sentinel\n",
+        "the file the link points at is untouched"
+    );
+    assert!(
+        !fs::symlink_metadata(bundle.join(target_rel))
+            .expect("target metadata")
+            .file_type()
+            .is_symlink(),
+        "no symbolic link stands at the target"
+    );
+    assert!(
+        fs::symlink_metadata(bundle.join(temp_rel)).is_err(),
+        "no temporary file remains beside the target"
+    );
+}
