@@ -6,7 +6,6 @@
 mod common;
 
 use std::fs;
-use std::path::Path;
 
 use looseleaf_core::check::check_bundle;
 use looseleaf_core::report::{ReportSection, append_report_entry};
