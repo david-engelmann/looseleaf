@@ -25,7 +25,12 @@ fn renderer_reproduces_the_fixture_indexes_byte_for_byte() {
     for (layer, rel) in [
         (Layer::Curated, "curated/index.md"),
         (Layer::People, "people/index.md"),
+        (Layer::Groups, "groups/index.md"),
+        (Layer::Topics, "topics/index.md"),
         (Layer::Daily, "daily/index.md"),
+        (Layer::Bank, "bank/index.md"),
+        (Layer::Synthesis, "synthesis/index.md"),
+        (Layer::Directives, "directives/index.md"),
     ] {
         let rendered = render_layer_index(&bundle, layer);
         let expected = fs::read_to_string(clean_fixture().join(rel)).expect("read fixture index");
@@ -73,6 +78,7 @@ fn a_new_person_lands_in_rank_order() {
 #[test]
 fn an_empty_layer_gets_a_heading_and_no_bullets() {
     let dir = fixture_copy("empty");
+    fs::remove_dir_all(dir.join("topics")).expect("clear the standing topics layer");
     fs::create_dir(dir.join("topics")).expect("create topics dir");
     let written = regenerate_indexes(&dir).expect("regenerate");
     assert_eq!(written, ["topics/index.md"]);
