@@ -27,6 +27,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::bundle::{Bundle, ConceptFile, LAYERS, Layer, read_bundle};
+use crate::write::write_via_temp;
 
 /// The heading label a layer's index carries.
 fn heading(layer: Layer) -> &'static str {
@@ -201,7 +202,7 @@ pub(crate) fn regenerate_layer(
     if current.as_deref() == Some(rendered.as_str()) {
         return Ok(None);
     }
-    crate::write::write_via_temp(&target, &rendered)?;
+    write_via_temp(&target, &rendered)?;
     Ok(Some(rel))
 }
 
@@ -309,6 +310,6 @@ pub fn regenerate_root_index(root: &Path) -> std::io::Result<Option<String>> {
     if rendered == current {
         return Ok(None);
     }
-    crate::write::write_via_temp(&target, &rendered)?;
+    write_via_temp(&target, &rendered)?;
     Ok(Some("index.md".to_owned()))
 }

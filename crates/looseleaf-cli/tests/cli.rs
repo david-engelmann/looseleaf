@@ -19,6 +19,13 @@ fn fixture_copy(name: &str) -> PathBuf {
     dir
 }
 
+fn shared_plant(name: &str) -> String {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../looseleaf-core/tests/fixtures")
+        .join(name);
+    fs::read_to_string(&path).expect("read the shared plant")
+}
+
 fn copy_dir(source: &Path, target: &Path) {
     fs::create_dir_all(target).expect("create the target");
     for entry in fs::read_dir(source).expect("read the fixture") {
@@ -189,7 +196,7 @@ fn staleness_escapes_line_breaks_in_its_printed_fields() {
     let dir = fixture_copy("staleness-escape");
     std::fs::write(
         dir.join("curated/weird\nname.md"),
-        "---\ntype: Curated Memory\ntitle: \"Weird\"\ndescription: \"A concept whose file name carries a line break.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nstale_after: 2026-11-01\nverified: { by: \"process:looseleaf-synthesis\", at: \"2026-11-20T00:00:00Z\\nforged\" }\n---\n\n# Weird\n",
+        shared_plant("stale-concept.md"),
     )
     .expect("write the line break concept");
     let outcome = run(&dir, &["staleness", "--at", "2026-11-24T00:00:00Z"]);
@@ -266,7 +273,7 @@ fn check_escapes_its_finding_lines() {
     let dir = fixture_copy("check-escape");
     fs::write(
         dir.join("curated/weird\nname.md"),
-        "---\ntype: Curated Memory\ntitle: \"Weird name\"\ndescription: \"A concept whose file name and replacement both carry line breaks.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nsources:\n  - id: day-one\n    resource: daily/2026-11-01.md\n    title: Daily log for 2026-11-01\nsuperseded_by: \"curated/no\\nsuch.md\"\n---\n\n# Weird name\n\nBody text.\n",
+        shared_plant("weird-concept.md"),
     )
     .expect("plant the concept");
     let outcome = run(&dir, &["check"]);
@@ -282,7 +289,7 @@ fn check_escapes_the_separator_characters() {
     let dir = fixture_copy("check-separator");
     fs::write(
         dir.join("curated/weird\u{2028}na\u{b}me.md"),
-        "---\ntype: Curated Memory\ntitle: \"Separator name\"\ndescription: \"A concept whose file name and replacement carry the separator characters.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nsources:\n  - id: day-one\n    resource: daily/2026-11-01.md\n    title: Daily log for 2026-11-01\nsuperseded_by: \"curated/no\u{85}\u{c}such\u{2029}.md\"\n---\n\n# Separator name\n\nBody text.\n",
+        shared_plant("separator-concept.md"),
     )
     .expect("plant the concept");
     let outcome = run(&dir, &["check"]);
