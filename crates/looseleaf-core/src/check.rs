@@ -158,6 +158,7 @@ pub fn check_bundle(root: &Path) -> CheckReport {
         }
     }
     check_claims(&bundle, &mut out);
+    check_concept_cycles(&bundle, &mut out);
     let files_checked = bundle.files.len();
     out.items
         .sort_by(|a, b| (&a.path, a.code, &a.message).cmp(&(&b.path, b.code, &b.message)));
@@ -480,6 +481,70 @@ fn check_concept_supersession(
             path,
             "the concept is deprecated but names no superseded_by replacement".to_owned(),
         );
+    }
+}
+
+/// Detect cycles in the concept supersession graph. The walk
+/// follows each managed concept's `superseded_by`, read as a
+/// scalar and resolved to its normalized form, and stops at a
+/// concept with no pointer, at a pointer whose target is not a
+/// managed concept, and when it returns to a concept already on
+/// the current walk. That return is the cycle, and one finding
+/// fires per concept on it. A chain that only leads into a
+/// cycle from outside fires nothing for its tail.
+fn check_concept_cycles(bundle: &Bundle, out: &mut Findings) {
+    let managed: BTreeSet<&str> = bundle
+        .files
+        .iter()
+        .filter(|file| file.is_managed_concept())
+        .map(|file| file.rel_path.as_str())
+        .collect();
+    let mut edges: BTreeMap<&str, String> = BTreeMap::new();
+    for file in &bundle.files {
+        if !file.is_managed_concept() {
+            continue;
+        }
+        let Some(frontmatter) = &file.frontmatter else {
+            continue;
+        };
+        let Some(target) = frontmatter.get_scalar("superseded_by") else {
+            continue;
+        };
+        let Ok(normalized) = resolve_in_bundle(bundle, target) else {
+            continue;
+        };
+        if managed.contains(normalized.as_str()) {
+            edges.insert(file.rel_path.as_str(), normalized);
+        }
+    }
+    let mut reported: BTreeSet<Vec<&str>> = BTreeSet::new();
+    for start in edges.keys() {
+        let mut walk: Vec<&str> = Vec::new();
+        let mut current = *start;
+        loop {
+            if let Some(index) = walk.iter().position(|node| *node == current) {
+                let mut cycle: Vec<&str> = walk[index..].to_vec();
+                cycle.sort_unstable();
+                if reported.insert(cycle.clone()) {
+                    for member in &cycle {
+                        out.error(
+                            "FM_SUPERSEDE_CYCLE",
+                            member,
+                            format!(
+                                "the concept's superseded_by chain forms a cycle through {}, so no concept in the cycle has a live successor",
+                                cycle.join(", ")
+                            ),
+                        );
+                    }
+                }
+                break;
+            }
+            walk.push(current);
+            let Some(next) = edges.get(current) else {
+                break;
+            };
+            current = next;
+        }
     }
 }
 
