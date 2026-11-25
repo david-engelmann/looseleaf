@@ -393,25 +393,16 @@ mod tests {
         // special-cases, captured before the render dispatch
         // consolidation so the consolidation must hold them.
         let cases: [(&str, &str); 7] = [
-            (
-                "v: [{ by: a, at: b }]\n",
-                "v:\n  - by: a\n    at: b\n",
-            ),
+            ("v: [{ by: a, at: b }]\n", "v:\n  - by: a\n    at: b\n"),
             ("v: [{ k: [] }]\n", "v:\n  - k: []\n"),
-            (
-                "v: [{ k: [x, y] }]\n",
-                "v:\n  - k:\n      - x\n      - y\n",
-            ),
+            ("v: [{ k: [x, y] }]\n", "v:\n  - k:\n      - x\n      - y\n"),
             ("v: [{ k: {} }]\n", "v:\n  - k: {}\n"),
             (
                 "v: [{ k: { a: \"1\", b: \"2\" } }]\n",
                 "v:\n  - k:\n      a: 1\n      b: 2\n",
             ),
             ("v: [[{ by: a }]]\n", "v:\n  -\n    - by: a\n"),
-            (
-                "v: [x, [y, z]]\n",
-                "v:\n  - x\n  -\n    - y\n    - z\n",
-            ),
+            ("v: [x, [y, z]]\n", "v:\n  - x\n  -\n    - y\n    - z\n"),
         ];
         for (index, (input, expected)) in cases.iter().enumerate() {
             let rendered = serialize_frontmatter(&fm(input));
