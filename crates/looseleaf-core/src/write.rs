@@ -293,9 +293,48 @@ pub(crate) fn bare_segment(segment: &str) -> &str {
 /// Write a document through a sibling temporary file and a rename
 /// over the target, so a failed write never truncates the file
 /// that was there. Every writer in the crate writes this way.
+///
+/// The temporary file stands at a fixed path beside the target.
+/// Whatever already stands there is removed first, with
+/// `remove_file` semantics, so a symbolic link planted at that
+/// path is unlinked rather than followed and a stale temporary
+/// file left by an interrupted write is cleared. The temporary
+/// file is then created with `create_new`, so a path planted
+/// between the removal and the creation refuses the write
+/// instead of being followed. A removal that reports the path
+/// absent is the normal first-write case. Any other removal
+/// failure, and any failure to create the temporary file,
+/// refuses the write with an error naming the temporary path.
 pub(crate) fn write_via_temp(target: &Path, text: &str) -> std::io::Result<()> {
+    use std::io::Write as _;
     let temp = target.with_extension("md.tmp-looseleaf");
-    std::fs::write(&temp, text)?;
+    match std::fs::remove_file(&temp) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => {
+            return Err(invalid_input(format!(
+                "could not clear the temporary file {} beside its target, {error}",
+                temp.display()
+            )));
+        }
+    }
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temp)
+        .map_err(|error| {
+            invalid_input(format!(
+                "could not create the temporary file {} beside its target, {error}",
+                temp.display()
+            ))
+        })?;
+    file.write_all(text.as_bytes()).map_err(|error| {
+        invalid_input(format!(
+            "could not write the temporary file {} beside its target, {error}",
+            temp.display()
+        ))
+    })?;
+    drop(file);
     std::fs::rename(&temp, target)
 }
 
@@ -313,7 +352,7 @@ fn split_top_entry(line: &str) -> Option<(&str, &str)> {
 
 #[cfg(test)]
 mod tests {
-    use super::{render_scalar, serialize_frontmatter, upsert_frontmatter};
+    use super::{render_scalar, serialize_frontmatter, upsert_frontmatter, write_via_temp};
     use crate::frontmatter::{Value, parse_document};
 
     fn fm(text: &str) -> crate::frontmatter::Frontmatter {
@@ -461,5 +500,96 @@ mod tests {
         let result = upsert_frontmatter(doc, "type", &value).expect("upsert");
         assert!(!result.changed);
         assert_eq!(result.text, doc);
+    }
+
+    fn scratch_dir(name: &str) -> std::path::PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("looseleaf-write-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("scratch dir should be creatable");
+        dir
+    }
+
+    #[test]
+    fn a_temp_write_lands_on_its_target_and_leaves_no_temp() {
+        let dir = scratch_dir("plain");
+        let target = dir.join("note.md");
+        write_via_temp(&target, "fresh text\n").expect("write should land");
+        assert_eq!(
+            std::fs::read_to_string(&target).expect("target readable"),
+            "fresh text\n"
+        );
+        assert!(
+            std::fs::symlink_metadata(dir.join("note.md.tmp-looseleaf")).is_err(),
+            "no temporary file remains beside the target"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_stale_temp_is_cleared_by_the_next_write() {
+        let dir = scratch_dir("stale");
+        let target = dir.join("note.md");
+        std::fs::write(dir.join("note.md.tmp-looseleaf"), "interrupted\n")
+            .expect("stale temp plantable");
+        write_via_temp(&target, "fresh text\n").expect("write should land");
+        assert_eq!(
+            std::fs::read_to_string(&target).expect("target readable"),
+            "fresh text\n"
+        );
+        assert!(
+            std::fs::symlink_metadata(dir.join("note.md.tmp-looseleaf")).is_err(),
+            "no temporary file remains beside the target"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_planted_symlink_at_the_temp_path_is_unlinked_not_followed() {
+        let dir = scratch_dir("symlink");
+        let outside = dir.join("outside.txt");
+        std::fs::write(&outside, "sentinel\n").expect("outside file plantable");
+        let target = dir.join("note.md");
+        std::os::unix::fs::symlink(&outside, dir.join("note.md.tmp-looseleaf"))
+            .expect("symlink plantable");
+        write_via_temp(&target, "fresh text\n").expect("write should land");
+        assert_eq!(
+            std::fs::read_to_string(&outside).expect("outside readable"),
+            "sentinel\n",
+            "the file the link points at is untouched"
+        );
+        assert!(
+            !std::fs::symlink_metadata(&target)
+                .expect("target metadata")
+                .file_type()
+                .is_symlink(),
+            "no symbolic link stands at the target"
+        );
+        assert_eq!(
+            std::fs::read_to_string(&target).expect("target readable"),
+            "fresh text\n"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_directory_at_the_temp_path_refuses_and_stays_intact() {
+        let dir = scratch_dir("directory");
+        let temp = dir.join("note.md.tmp-looseleaf");
+        std::fs::create_dir(&temp).expect("directory plantable");
+        let target = dir.join("note.md");
+        let error = write_via_temp(&target, "fresh text\n")
+            .expect_err("a directory at the temp path refuses the write");
+        assert!(
+            error.to_string().contains(&temp.display().to_string()),
+            "the refusal names the temporary path, got: {error}"
+        );
+        assert!(temp.is_dir(), "the planted directory stays intact");
+        assert!(
+            std::fs::symlink_metadata(&target).is_err(),
+            "nothing lands on the target"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

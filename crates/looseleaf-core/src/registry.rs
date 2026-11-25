@@ -237,8 +237,6 @@ pub fn regenerate_registry(root: &Path, at: &str) -> std::io::Result<bool> {
     if current.as_deref() == Some(rendered.as_str()) {
         return Ok(false);
     }
-    let temp = root.join("claims.md.tmp-looseleaf");
-    fs::write(&temp, rendered)?;
-    fs::rename(&temp, &target)?;
+    crate::write::write_via_temp(&target, &rendered)?;
     Ok(true)
 }
