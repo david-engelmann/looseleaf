@@ -36,7 +36,7 @@ fn a_first_entry_creates_the_report_and_its_layer_index() {
     let index = fs::read_to_string(dir.join("synthesis/index.md")).expect("read the index");
     assert_eq!(
         index,
-        "# Synthesis\n\n* [Synthesis report 2026-11-24](2026-11-24-190602.md)\n"
+        "# Synthesis\n\n* [Field notes](field-notes.md)\n* [Synthesis report 2026-11-24](2026-11-24-190602.md)\n"
     );
     let report = check_bundle(&dir);
     assert_eq!(report.findings.len(), 0, "got {:?}", report.findings);
@@ -120,6 +120,7 @@ fn two_runs_on_one_day_write_two_reports() {
 #[test]
 fn write_report_refuses_bad_stamps_entries_and_shapes() {
     let dir = fixture_copy("refusals");
+    fs::remove_dir_all(dir.join("synthesis")).expect("clear the standing synthesis layer");
     let error = append_report_entry(&dir, "2026-11-24", ReportSection::Flags, "An entry")
         .expect_err("a stamp with no time must refuse");
     assert!(
@@ -295,6 +296,7 @@ fn the_checker_warns_on_out_of_order_sections_and_an_uppercase_extension() {
 #[test]
 fn write_report_refuses_a_symlinked_synthesis_directory() {
     let dir = fixture_copy("symlink");
+    fs::remove_dir_all(dir.join("synthesis")).expect("clear the standing synthesis layer");
     let outside = dir.parent().expect("a parent").join("report-outside");
     fs::create_dir_all(&outside).expect("make the outside directory");
     std::os::unix::fs::symlink(&outside, dir.join("synthesis")).expect("link the layer");
@@ -310,7 +312,7 @@ fn write_report_refuses_a_symlinked_synthesis_directory() {
 #[test]
 fn an_existing_layer_without_an_index_gains_one() {
     let dir = fixture_copy("index-upkeep");
-    fs::create_dir_all(dir.join("synthesis")).expect("make the layer");
+    fs::remove_file(dir.join("synthesis/index.md")).expect("drop the standing index");
     append_report_entry(&dir, AT, ReportSection::Flags, "A flag").expect("write the entry");
     let index = fs::read_to_string(dir.join("synthesis/index.md")).expect("read the index");
     assert!(index.contains("(2026-11-24-190602.md)"), "got {index}");
