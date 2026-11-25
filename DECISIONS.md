@@ -881,3 +881,25 @@ in the walk's node set stands as correct detection, and
 the write_body window stands under the contract's
 single-writer term. The success lines and the stderr lines
 stand raw on the reasoning D28 recorded.
+
+## D31. Phase 7 checkpoint dispositions (2026-11-25)
+
+The checkpoint reviews over the Phase 7 diff found the
+phase faithful to its scope, the spec review with no
+findings at any severity and the red team with none, every
+printed surface either sealed by the widened alphabet or
+standing inside a disposition the phase re-weighed. The
+repairs below come from the standards review. The shared
+plant helper the second slice added stands once in the
+core crate's shared test harness, where this crate keeps
+its test scaffolding, instead of once per core test file
+that uses it, and the two core copies are removed. The CLI
+crate's copy stands, since the crates share no harness and
+its base path differs. The queue refusal test now pins
+every member of the widened set, the planted line
+separator case joined by the remaining four characters
+against constructed paths, matching the printer side's
+complete pin. One phrase of D30 is noted here, since D30
+is landed history. Its second paragraph says this entry's
+phase where the register's standing form is this phase.
+The sentence's content is accurate and stands.

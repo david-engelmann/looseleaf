@@ -18,13 +18,6 @@ fn fixture_copy(name: &str) -> std::path::PathBuf {
     common::fixture_copy("slice3", name)
 }
 
-fn shared_plant(name: &str) -> String {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures")
-        .join(name);
-    fs::read_to_string(&path).expect("read the shared plant")
-}
-
 #[test]
 fn staleness_reports_against_the_supplied_stamp_only() {
     let dir = fixture_copy("stale");
@@ -54,7 +47,7 @@ fn staleness_report_values_stay_unescaped() {
     let dir = fixture_copy("stale-raw");
     fs::write(
         dir.join("curated/weird\nname.md"),
-        shared_plant("stale-concept.md"),
+        common::shared_plant("stale-concept.md"),
     )
     .expect("write the line break concept");
     let stale = staleness_report(&dir, "2026-11-24T00:00:00Z").expect("report");

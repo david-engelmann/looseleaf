@@ -33,13 +33,6 @@ fn write_file(dir: &Path, rel: &str, text: &str) {
     fs::write(&path, text).expect("write fixture file");
 }
 
-fn shared_plant(name: &str) -> String {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures")
-        .join(name);
-    fs::read_to_string(&path).expect("read the shared plant")
-}
-
 fn codes(dir: &Path) -> Vec<&'static str> {
     check_bundle(dir)
         .findings
@@ -628,7 +621,7 @@ fn a_finding_on_a_line_break_concept_stays_raw_in_the_report() {
     write_file(
         &dir,
         "curated/weird\nname.md",
-        &shared_plant("weird-concept.md"),
+        &common::shared_plant("weird-concept.md"),
     );
     let report = check_bundle(&dir);
     let finding = report
@@ -658,7 +651,7 @@ fn a_finding_on_a_separator_concept_stays_raw_in_the_report() {
     write_file(
         &dir,
         "curated/weird\u{2028}na\u{b}me.md",
-        &shared_plant("separator-concept.md"),
+        &common::shared_plant("separator-concept.md"),
     );
     let report = check_bundle(&dir);
     let finding = report
