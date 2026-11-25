@@ -527,3 +527,20 @@ the bundle failing the layout check. The convention is banked
 in PROFILE section 7, and the checker warns REPORT_SHAPE on a
 report-named synthesis file whose body lacks one of the six
 sections, so the audited artifact is itself auditable.
+
+## D22. The re-verification queue (2026-11-24)
+
+Phase 3 Slice 3 adds queue, printing the re-verification queue
+a pass hands on. Its membership is the contract's set and
+nothing else, the concepts the pass created or changed in
+meaning in the same pass, supplied one by one as --changed
+paths after the stamp. Each path is resolved through the
+bundle walker and refused when it names no concept, a reserved
+file, the claim registry, or a daily file, and duplicates fall
+out by resolved path. The output is one line per concept and a
+closing count, a list and never an edit, so the host pastes
+the printed queue into the report's queue section and the
+report carries the queue the tool printed. The general queue
+mechanism for any bundle remains the upkeep engine's under
+the design record's boundary, surfaced in D20. This command is
+the looseleaf pass's own instance.
