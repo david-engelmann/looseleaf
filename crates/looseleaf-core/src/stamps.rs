@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 use crate::bundle::{ConceptFile, Layer, read_bundle};
 use crate::check::is_calendar_date;
 use crate::frontmatter::{Value, parse_document};
-use crate::write::{invalid_input, not_found, upsert_frontmatter};
+use crate::write::{invalid_input, not_found, upsert_frontmatter, write_via_temp};
 
 /// The actor the synthesis pass stamps under the profile.
 pub const PASS_ACTOR: &str = "process:looseleaf-synthesis";
@@ -364,7 +364,7 @@ fn stamp_target(root: &Path, path: &str) -> std::io::Result<(ConceptFile, PathBu
 }
 
 fn write_stamp(target: &Path, text: &str) -> std::io::Result<()> {
-    crate::write::write_via_temp(target, text)
+    write_via_temp(target, text)
 }
 
 /// The upserted document, refused when it no longer parses.
