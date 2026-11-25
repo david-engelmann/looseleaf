@@ -18,7 +18,9 @@
 //! the `write-report` subcommand appends one entry to a section
 //! of the run's Synthesis report concept. The `queue` subcommand
 //! prints the re-verification queue a pass hands on, the concepts
-//! the pass created or changed in meaning. Arguments are
+//! the pass created or changed in meaning. The `deprecate`
+//! subcommand executes a concept deprecation the contract's
+//! human gate has decided, in the profile's shape. Arguments are
 //! strict. Anything the tool does not recognise is a usage error with
 //! exit code 2, never something silently ignored, and a non-UTF-8
 //! argument is reported rather than panicking, because a bundle path
@@ -54,10 +56,11 @@ fn main() -> ExitCode {
         "stamp-verified" => run_stamp_verified(&args[1..]),
         "write-report" => run_write_report(&args[1..]),
         "queue" => run_queue(&args[1..]),
+        "deprecate" => run_deprecate(&args[1..]),
         other => {
             eprintln!("unknown subcommand {other}");
             eprintln!(
-                "usage: looseleaf [check <bundle>] [write-registry <bundle> --at <timestamp>] [write-indexes <bundle>] [write-root-index <bundle>] [append-log <bundle> --date <date> --entry <text> [--layer <curated|daily>]] [staleness <bundle> --at <timestamp>] [promote <bundle> --claim <id> --to <path> [--reason <text>]] [stamp-generated <bundle> --path <path> --at <timestamp> [--by <actor>]] [stamp-verified <bundle> --path <path> --by <actor> --at <timestamp>] [write-report <bundle> --at <timestamp> --section <token> --entry <text>] [queue <bundle> --at <timestamp> [--changed <path>]...]"
+                "usage: looseleaf [check <bundle>] [write-registry <bundle> --at <timestamp>] [write-indexes <bundle>] [write-root-index <bundle>] [append-log <bundle> --date <date> --entry <text> [--layer <curated|daily>]] [staleness <bundle> --at <timestamp>] [promote <bundle> --claim <id> --to <path> [--reason <text>]] [stamp-generated <bundle> --path <path> --at <timestamp> [--by <actor>]] [stamp-verified <bundle> --path <path> --by <actor> --at <timestamp>] [write-report <bundle> --at <timestamp> --section <token> --entry <text>] [queue <bundle> --at <timestamp> [--changed <path>]...] [deprecate <bundle> --path <path> --superseded-by <path> --at <timestamp>]"
             );
             ExitCode::from(2)
         }
@@ -302,6 +305,38 @@ fn run_stamp_generated(args: &[OsString]) -> ExitCode {
         }
         Err(error) => {
             eprintln!("could not stamp generated, {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn run_deprecate(args: &[OsString]) -> ExitCode {
+    let usage =
+        "usage: looseleaf deprecate <bundle> --path <path> --superseded-by <path> --at <timestamp>";
+    if args.len() != 7 || args[1] != "--path" || args[3] != "--superseded-by" || args[5] != "--at" {
+        eprintln!("{usage}");
+        return ExitCode::from(2);
+    }
+    let (Ok(root), Ok(path), Ok(replacement), Ok(at)) = (
+        str_arg(&args[0]),
+        str_arg(&args[2]),
+        str_arg(&args[4]),
+        str_arg(&args[6]),
+    ) else {
+        eprintln!("{usage}");
+        return ExitCode::from(2);
+    };
+    match looseleaf_core::stamps::deprecate_concept(Path::new(root), path, replacement, at) {
+        Ok(looseleaf_core::stamps::Deprecation::Deprecated) => {
+            println!("concept deprecated, {path}");
+            ExitCode::SUCCESS
+        }
+        Ok(looseleaf_core::stamps::Deprecation::AlreadyCurrent) => {
+            println!("concept already deprecated, {path}");
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("could not deprecate, {error}");
             ExitCode::FAILURE
         }
     }
