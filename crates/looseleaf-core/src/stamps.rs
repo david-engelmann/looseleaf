@@ -23,6 +23,132 @@ use crate::write::{invalid_input, not_found, upsert_frontmatter};
 /// The actor the synthesis pass stamps under the profile.
 pub const PASS_ACTOR: &str = "process:looseleaf-synthesis";
 
+/// What a deprecation did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Deprecation {
+    /// The concept was deprecated by this call.
+    Deprecated,
+    /// The concept already stood exactly as this call would
+    /// write it, and nothing was written.
+    AlreadyCurrent,
+}
+
+/// Deprecate a concept in favour of its replacement, executing
+/// a decision the contract's human gate has already made.
+///
+/// The act writes the three keys the profile names for it, the
+/// status deprecated, the `superseded_by` pointer at the
+/// replacement, and the generated restamp with the pass actor,
+/// composed in memory and written once, so no reader sees a
+/// half-deprecated concept. A concept carrying part of the act
+/// already, the pointer without the status or the status
+/// without the pointer, is completed. A pointer naming a
+/// different replacement is refused, because repointing a
+/// deprecation is a new decision, not an execution of one.
+/// The concept's claims are untouched, the profile keeps the
+/// concept and claim axes separate.
+///
+/// # Errors
+///
+/// Returns an error when the stamp is not a real date with an
+/// optional real time, when either path names no file, a
+/// reserved file, the registry, a daily or directive file, a
+/// root file or a file that did not read cleanly, when the
+/// replacement is the target itself, when the target carries
+/// no frontmatter or a pointer that is not a plain path, or
+/// when the composed document would no longer parse.
+pub fn deprecate_concept(
+    root: &Path,
+    path: &str,
+    superseded_by: &str,
+    at: &str,
+) -> std::io::Result<Deprecation> {
+    checked_stamp(at)?;
+    let (file, target) = stamp_target(root, path)?;
+    let Some(frontmatter) = file.frontmatter.as_ref() else {
+        return Err(invalid_input(format!(
+            "{path} carries no frontmatter to deprecate"
+        )));
+    };
+    if let Some(existing) = frontmatter.get("superseded_by") {
+        let Value::Scalar(existing) = existing else {
+            return Err(invalid_input(format!(
+                "{path} carries a superseded_by that is not a plain path"
+            )));
+        };
+        if existing != superseded_by {
+            return Err(invalid_input(format!(
+                "{path} already points at {existing} as its replacement, and repointing a deprecation is a new decision"
+            )));
+        }
+    }
+    if superseded_by == path {
+        return Err(invalid_input(
+            "a concept cannot be deprecated in favour of itself".to_owned(),
+        ));
+    }
+    let bundle = read_bundle(root);
+    let Some(replacement) = bundle
+        .files
+        .iter()
+        .find(|file| file.rel_path == superseded_by)
+    else {
+        return Err(not_found(format!(
+            "no file at {superseded_by} in the bundle"
+        )));
+    };
+    if replacement.reserved {
+        return Err(invalid_input(format!(
+            "{superseded_by} is a reserved file, not a concept"
+        )));
+    }
+    if replacement.is_registry {
+        return Err(invalid_input(format!(
+            "{superseded_by} is the claim registry, not a concept"
+        )));
+    }
+    match replacement.layer {
+        Layer::Daily => {
+            return Err(invalid_input(format!(
+                "{superseded_by} is in the daily layer, which is never a replacement concept"
+            )));
+        }
+        Layer::Directives => {
+            return Err(invalid_input(format!(
+                "{superseded_by} is a directive concept, which the contract human-gates against change"
+            )));
+        }
+        Layer::Root => {
+            return Err(invalid_input(format!(
+                "{superseded_by} is not inside a layer directory"
+            )));
+        }
+        _ => {}
+    }
+    if replacement.read_error || replacement.frontmatter.is_none() {
+        return Err(invalid_input(format!(
+            "{superseded_by} does not carry readable frontmatter"
+        )));
+    }
+    let text = fs::read_to_string(&target)?;
+    let mut composed = upsert_frontmatter(&text, "status", &Value::Scalar("deprecated".to_owned()))
+        .map_err(invalid_input)?;
+    composed = upsert_frontmatter(
+        &composed.text,
+        "superseded_by",
+        &Value::Scalar(superseded_by.to_owned()),
+    )
+    .map_err(invalid_input)?;
+    composed = upsert_frontmatter(&composed.text, "generated", &by_at_value(PASS_ACTOR, at))
+        .map_err(invalid_input)?;
+    let composed = checked_upsert(composed, path)?;
+    if composed.text == text {
+        return Ok(Deprecation::AlreadyCurrent);
+    }
+    write_stamp(&target, &composed.text)?;
+    Ok(Deprecation::Deprecated)
+}
+
 /// What a stamp command did.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Stamp {

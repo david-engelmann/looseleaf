@@ -150,6 +150,41 @@ fn write_report_and_queue_print_their_pinned_lines() {
 }
 
 #[test]
+fn deprecate_prints_its_pinned_lines() {
+    let dir = fixture_copy("deprecate");
+    let outcome = run(
+        &dir,
+        &[
+            "deprecate",
+            "--path",
+            "people/ada.md",
+            "--superseded-by",
+            "curated/standing-facts.md",
+            "--at",
+            "2026-11-24T22:00:00Z",
+        ],
+    );
+    assert_eq!(outcome.code, 0, "stderr {}", outcome.stderr);
+    assert_eq!(outcome.stdout, "concept deprecated, people/ada.md\n");
+    let outcome = run(
+        &dir,
+        &[
+            "deprecate",
+            "--path",
+            "people/ada.md",
+            "--superseded-by",
+            "curated/standing-facts.md",
+            "--at",
+            "2026-11-24T22:00:00Z",
+        ],
+    );
+    assert_eq!(
+        outcome.stdout,
+        "concept already deprecated, people/ada.md\n"
+    );
+}
+
+#[test]
 fn usage_errors_exit_two() {
     let dir = fixture_copy("usage");
     let outcome = run(
