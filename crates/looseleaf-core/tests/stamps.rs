@@ -104,7 +104,7 @@ fn stamp_generated_honours_an_explicit_actor() {
 fn stamp_verified_walks_the_three_shapes() {
     let dir = fixture_copy("verified");
     let rel = "curated/standing-facts.md";
-    assert!(verified_records(&dir, rel).is_empty());
+    assert_eq!(verified_records(&dir, rel), Vec::new());
     let outcome = stamp_verified(&dir, rel, "checker", "2026-11-24T09:00:00Z").expect("first");
     assert_eq!(outcome, Stamp::Stamped);
     assert_eq!(
