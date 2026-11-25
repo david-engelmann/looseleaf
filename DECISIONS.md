@@ -620,3 +620,39 @@ byte literals captured across the render dispatch's branch
 matrix before the change, not by the suite's parse
 round-trips, which are blind to the indentation drift that
 matters.
+
+## D25. Phase 4 checkpoint repair dispositions (2026-11-24)
+
+The Phase 4 checkpoint reviews found no defect in the
+deprecation act's shape, and the repair pass closes the
+edges they named. Deprecate now refuses to close a
+supersession cycle, walking the replacement's own pointer
+chain and refusing when it leads back to the target, since
+D24's deliberate acceptance covers chains and a cycle is
+not a chain. The repoint comparison normalizes a standing
+pointer the way the checker's resolver does, so a
+non-canonical pointer naming the same file completes and
+is canonicalized instead of drawing a repoint refusal. A
+replacement path carrying an anchor is refused, because a
+pointer written with one would not resolve under the
+checker. A non-scalar status is refused on the same rule
+as a non-scalar pointer, that refusal itself being the one
+D24 left unrecorded, and a target whose frontmatter does
+not parse is now named as such. A synthesis pass report is
+refused as a replacement, since a report is a run's record
+and not a successor concept, while every other layer the
+profile does not exclude stays eligible. The two refusal
+ladders the act grew are factored into one shared rule the
+stamp targets and the replacement both pass through, and
+the act reads the bundle once. Two corrections to D24's
+record stand here. The golden pins landed in the writer
+module's own tests rather than the integration test file
+the scope named, the substance being that they landed
+against the unconsolidated code and held through the
+consolidation. And the pin matrix covers every shape the
+subset can construct, the remaining enumerated cells, a
+mapping nested inside a first entry's mapping value and
+the collection shapes at deeper indents, being shapes the
+parser's depth cap and the profile's nesting bar keep out
+of any bundle, with equivalence for them resting on the
+consolidation's uniform delegation to the one entry path.

@@ -139,6 +139,9 @@ fn render_list(lines: &mut Vec<String>, indent: usize, items: &[Value]) {
                         // padding for the dash.
                         let mut rendered = Vec::new();
                         render_entry(&mut rendered, indent + 2, key, value);
+                        // Invariant the slice below rests on,
+                        // every line render_entry pushes begins
+                        // with exactly indent + 2 spaces.
                         for (index, line) in rendered.into_iter().enumerate() {
                             if index == 0 {
                                 lines.push(format!("{pad}- {}", &line[indent + 2..]));
@@ -382,7 +385,7 @@ mod tests {
         // Byte pins over the shapes the list renderer
         // special-cases, captured before the render dispatch
         // consolidation so the consolidation must hold them.
-        let cases: [(&str, &str); 7] = [
+        let cases: [(&str, &str); 9] = [
             ("v: [{ by: a, at: b }]\n", "v:\n  - by: a\n    at: b\n"),
             ("v: [{ k: [] }]\n", "v:\n  - k: []\n"),
             ("v: [{ k: [x, y] }]\n", "v:\n  - k:\n      - x\n      - y\n"),
@@ -393,6 +396,11 @@ mod tests {
             ),
             ("v: [[{ by: a }]]\n", "v:\n  -\n    - by: a\n"),
             ("v: [x, [y, z]]\n", "v:\n  - x\n  -\n    - y\n    - z\n"),
+            ("v: [{ by: \"a: b\" }]\n", "v:\n  - by: \"a: b\"\n"),
+            (
+                "v: [{ by: a }, { k: [x, y] }]\n",
+                "v:\n  - by: a\n  - k:\n      - x\n      - y\n",
+            ),
         ];
         for (index, (input, expected)) in cases.iter().enumerate() {
             let rendered = serialize_frontmatter(&fm(input));
