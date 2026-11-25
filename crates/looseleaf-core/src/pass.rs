@@ -156,7 +156,9 @@ pub fn reverification_queue(
     let bundle = read_bundle(root);
     let mut queue: Vec<String> = Vec::new();
     for path in changed {
-        if path.contains(['\n', '\r']) {
+        if path.contains([
+            '\n', '\r', '\u{b}', '\u{c}', '\u{85}', '\u{2028}', '\u{2029}',
+        ]) {
             return Err(invalid(
                 "a queue path carries a line break, and the queue is printed as lines".to_owned(),
             ));

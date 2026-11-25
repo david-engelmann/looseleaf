@@ -640,3 +640,35 @@ fn a_finding_on_a_line_break_concept_stays_raw_in_the_report() {
         finding.message
     );
 }
+
+#[test]
+fn a_finding_on_a_separator_concept_stays_raw_in_the_report() {
+    // The widened printer alphabet renders five more line
+    // boundaries as escapes, and the core report's values stay
+    // raw for all of them, so a consumer of the report sees
+    // the true path and the true message.
+    let dir = defect_copy("raw-separator");
+    write_file(
+        &dir,
+        "curated/weird\u{2028}na\u{b}me.md",
+        "---\ntype: Curated Memory\ntitle: \"Separator name\"\ndescription: \"A concept whose file name and replacement carry the separator characters.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nsources:\n  - id: day-one\n    resource: daily/2026-11-01.md\n    title: Daily log for 2026-11-01\nsuperseded_by: \"curated/no\u{85}\u{c}such\u{2029}.md\"\n---\n\n# Separator name\n\nBody text.\n",
+    );
+    let report = check_bundle(&dir);
+    let finding = report
+        .findings
+        .iter()
+        .find(|finding| finding.code == "FM_SUPERSEDED_BY")
+        .expect("the plant draws its superseded_by finding");
+    assert!(
+        finding.path.contains('\u{2028}') && finding.path.contains('\u{b}'),
+        "the core path stays raw, got {:?}",
+        finding.path
+    );
+    assert!(
+        finding.message.contains('\u{85}')
+            && finding.message.contains('\u{c}')
+            && finding.message.contains('\u{2029}'),
+        "the core message stays raw, got {:?}",
+        finding.message
+    );
+}
