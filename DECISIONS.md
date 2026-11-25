@@ -587,3 +587,36 @@ share one report file, since the name is derived from the
 run's stamp and nothing else the tool may use distinguishes
 them, and telling such runs apart is the caller's stamp
 discipline.
+
+## D24. Phase 4 design dispositions (2026-11-24)
+
+Phase 4 mechanizes concept deprecation and closes the
+writer render consolidation, and its design reviews cut the
+phase's other proposed command. A record-supersession
+command for supersessions born inside the curated layer is
+not built. The profile's chain rule puts every claim in a
+daily log first and promotion is the only route into the
+curated layer, so the flow the command served is one no
+source authorizes, and promotion's completion semantics
+already finish interrupted supersession paperwork on a
+later run. The deprecation command writes the status the
+profile and the checker use, deprecated, in one composed
+write of the act's three keys, status, superseded_by and
+the generated restamp built with the stamps' shared
+construction, guarded by a re-read of the composed document
+before the single write. Its target ladder is the stamps'
+own, directives refused with the rest, since the contract
+human-gates any change to a directive. Its replacement is
+any managed concept the walker resolves, with no layer
+confinement, never the target itself and never a file that
+did not read cleanly. A partial act already standing is
+completed, a pointer naming a different replacement is
+refused as a new decision rather than an execution, a
+replacement that is itself deprecated is accepted
+deliberately, and the concept's claims are untouched
+because the profile keeps the concept and claim axes
+separate. The writer consolidation is proven by golden
+byte literals captured across the render dispatch's branch
+matrix before the change, not by the suite's parse
+round-trips, which are blind to the indentation drift that
+matters.
