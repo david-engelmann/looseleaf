@@ -13,10 +13,10 @@
 //! a bundle that are generated, the claim registry, the layer and
 //! root indexes, the dated log appends, and the synthesis pass
 //! mechanics of staleness reporting and claim promotion, through
-//! byte-stable writers that preserve whatever they do not own. It
-//! also stamps the frontmatter the contract binds the pass to and
-//! writes the Synthesis report concept each run is audited
-//! against. It
+//! byte-stable writers that preserve whatever they do not own. The
+//! pass paperwork lives here too, the frontmatter stamps, the
+//! Synthesis report concept each run is audited against, and the
+//! re-verification queue a pass hands on. It
 //! never calls a model. The judgment half of looseleaf, the synthesis
 //! pass that decides what to promote and what to supersede, ships as
 //! a written contract that a host agent executes. See DECISIONS.md in

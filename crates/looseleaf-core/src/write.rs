@@ -12,6 +12,8 @@
 //! until its owner edits that key, because the upsert touches nothing
 //! it was not asked to touch.
 
+use std::path::Path;
+
 use crate::frontmatter::{Frontmatter, Value};
 
 /// Render a scalar in the subset, quoting only when the plain form
@@ -291,8 +293,17 @@ pub fn upsert_frontmatter(text: &str, key: &str, value: &Value) -> Result<Upsert
 
 /// A line segment without its ending, for fence and entry detection
 /// that must work the same on LF and CRLF documents.
-fn bare_segment(segment: &str) -> &str {
+pub(crate) fn bare_segment(segment: &str) -> &str {
     segment.trim_end_matches(['\n', '\r'])
+}
+
+/// Write a document through a sibling temporary file and a rename
+/// over the target, so a failed write never truncates the file
+/// that was there. Every writer in the crate writes this way.
+pub(crate) fn write_via_temp(target: &Path, text: &str) -> std::io::Result<()> {
+    let temp = target.with_extension("md.tmp-looseleaf");
+    std::fs::write(&temp, text)?;
+    std::fs::rename(&temp, target)
 }
 
 /// Split a top-level frontmatter line into key and remainder, when it
