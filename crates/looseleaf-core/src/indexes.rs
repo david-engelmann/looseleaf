@@ -201,9 +201,7 @@ pub(crate) fn regenerate_layer(
     if current.as_deref() == Some(rendered.as_str()) {
         return Ok(None);
     }
-    let temp = root.join(format!("{dir}/index.md.tmp-looseleaf"));
-    fs::write(&temp, rendered)?;
-    fs::rename(&temp, &target)?;
+    crate::write::write_via_temp(&target, &rendered)?;
     Ok(Some(rel))
 }
 
@@ -311,8 +309,6 @@ pub fn regenerate_root_index(root: &Path) -> std::io::Result<Option<String>> {
     if rendered == current {
         return Ok(None);
     }
-    let temp = root.join("index.md.tmp-looseleaf");
-    fs::write(&temp, rendered)?;
-    fs::rename(&temp, &target)?;
+    crate::write::write_via_temp(&target, &rendered)?;
     Ok(Some("index.md".to_owned()))
 }

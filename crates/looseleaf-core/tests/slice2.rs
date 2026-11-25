@@ -196,3 +196,41 @@ fn an_append_joins_after_the_last_entry_not_trailing_prose() {
         "# Bundle log\n\n## 2026-11-02\n\n- First entry.\n- Second entry.\nA note after the entries.\n"
     );
 }
+
+#[cfg(unix)]
+#[test]
+fn a_log_append_does_not_follow_a_symlink_at_its_temp_path() {
+    let dir = fixture_copy("log-temp-symlink");
+    let outside =
+        std::env::temp_dir().join(format!("looseleaf-slice2-outside-{}", std::process::id()));
+    fs::write(&outside, "sentinel\n").expect("outside file plantable");
+    std::os::unix::fs::symlink(&outside, dir.join("daily/log.md.tmp-looseleaf"))
+        .expect("symlink plantable");
+    let rel =
+        append_log(&dir, LogScope::Daily, "2026-11-03", "Planted link run.").expect("append lands");
+    assert_eq!(rel, "daily/log.md");
+    assert_eq!(
+        fs::read_to_string(&outside).expect("outside readable"),
+        "sentinel\n",
+        "the file the link points at is untouched"
+    );
+    let target = dir.join("daily/log.md");
+    assert!(
+        !fs::symlink_metadata(&target)
+            .expect("target metadata")
+            .file_type()
+            .is_symlink(),
+        "no symbolic link stands at the target"
+    );
+    assert!(
+        fs::read_to_string(&target)
+            .expect("log readable")
+            .contains("Planted link run."),
+        "the entry lands in the log"
+    );
+    assert!(
+        fs::symlink_metadata(dir.join("daily/log.md.tmp-looseleaf")).is_err(),
+        "no temporary file remains beside the target"
+    );
+    let _ = fs::remove_file(&outside);
+}

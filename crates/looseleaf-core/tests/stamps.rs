@@ -290,3 +290,35 @@ fn stamp_verified_refuses_a_malformed_existing_entry() {
         "a refusal writes nothing"
     );
 }
+
+#[cfg(unix)]
+#[test]
+fn a_stamp_does_not_follow_a_symlink_planted_at_its_temp_path() {
+    let dir = fixture_copy("stamp-temp-symlink");
+    let outside =
+        std::env::temp_dir().join(format!("looseleaf-stamps-outside-{}", std::process::id()));
+    fs::write(&outside, "sentinel\n").expect("outside file plantable");
+    std::os::unix::fs::symlink(&outside, dir.join("people/ada.md.tmp-looseleaf"))
+        .expect("symlink plantable");
+    let outcome = stamp_generated(&dir, "people/ada.md", PASS_ACTOR, "2026-11-24T21:00:00Z")
+        .expect("stamp lands");
+    assert_eq!(outcome, Stamp::Stamped);
+    assert_eq!(
+        fs::read_to_string(&outside).expect("outside readable"),
+        "sentinel\n",
+        "the file the link points at is untouched"
+    );
+    let target = dir.join("people/ada.md");
+    assert!(
+        !fs::symlink_metadata(&target)
+            .expect("target metadata")
+            .file_type()
+            .is_symlink(),
+        "no symbolic link stands at the target"
+    );
+    assert!(
+        fs::symlink_metadata(dir.join("people/ada.md.tmp-looseleaf")).is_err(),
+        "no temporary file remains beside the target"
+    );
+    let _ = fs::remove_file(&outside);
+}

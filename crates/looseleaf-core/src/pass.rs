@@ -30,7 +30,9 @@ use crate::claim::{Claim, scan_claims};
 use crate::frontmatter::{Frontmatter, Value};
 use crate::indexes::frontmatter_span;
 use crate::registry::{escape_quoted, section_entries_in};
-use crate::write::{invalid_input as invalid, line_ending, not_found, render_scalar};
+use crate::write::{
+    invalid_input as invalid, line_ending, not_found, render_scalar, write_via_temp,
+};
 
 /// One concept whose `stale_after` has passed at the given stamp.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -688,8 +690,5 @@ fn write_body(root: &Path, target: &str, body: &str) -> std::io::Result<()> {
     };
     let mut out = String::from(span);
     out.push_str(body);
-    let temp = target_path.with_extension("md.tmp-looseleaf");
-    fs::write(&temp, out)?;
-    fs::rename(&temp, &target_path)?;
-    Ok(())
+    write_via_temp(&target_path, &out)
 }
