@@ -569,6 +569,11 @@ stamp's record reading now matches the checker's rule exactly,
 scalar by and at required, other entries ignored, the whole
 verified list validated before the duplicate check runs, and
 an empty list refused as the malformed shape the checker flags.
+Both stamps also re-read their own rendered output before
+writing and refuse when it no longer parses, because wrapping
+a record into a list can carry a nested value past the depth
+the subset parser reads, and a stamp never writes a document
+its own reader cannot take back.
 The queue refuses a path carrying a line break, since its
 output is pasted into the report as the audited record. The
 sibling temp and rename write and the bare segment helper are

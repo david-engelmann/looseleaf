@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 
 use crate::bundle::{ConceptFile, Layer, read_bundle};
 use crate::check::is_calendar_date;
-use crate::frontmatter::Value;
+use crate::frontmatter::{Value, parse_document};
 use crate::write::{invalid_input, not_found, upsert_frontmatter};
 
 /// The actor the synthesis pass stamps under the profile.
@@ -143,6 +143,23 @@ fn write_stamp(target: &Path, text: &str) -> std::io::Result<()> {
     crate::write::write_via_temp(target, text)
 }
 
+/// The upserted document, refused when it no longer parses.
+/// Wrapping a record one level deeper, as the verified append
+/// does, can carry a nested value past the depth the subset
+/// parser reads, and the serializer renders it anyway. A stamp
+/// never writes a document its own reader cannot take back.
+fn checked_upsert(
+    upserted: crate::write::Upsert,
+    path: &str,
+) -> std::io::Result<crate::write::Upsert> {
+    if parse_document(&upserted.text).parse_error.is_some() {
+        return Err(invalid_input(format!(
+            "stamping {path} would leave a document the subset cannot parse, so nothing is written"
+        )));
+    }
+    Ok(upserted)
+}
+
 /// Restamp one concept's `generated` with the given actor and
 /// stamp, through the frontmatter upsert, so only the `generated`
 /// lines change.
@@ -157,8 +174,10 @@ pub fn stamp_generated(root: &Path, path: &str, by: &str, at: &str) -> std::io::
     checked_stamp(at)?;
     let (_, target) = stamp_target(root, path)?;
     let text = fs::read_to_string(&target)?;
-    let upsert =
-        upsert_frontmatter(&text, "generated", &by_at_value(by, at)).map_err(invalid_input)?;
+    let upsert = checked_upsert(
+        upsert_frontmatter(&text, "generated", &by_at_value(by, at)).map_err(invalid_input)?,
+        path,
+    )?;
     if !upsert.changed {
         return Ok(Stamp::AlreadyCurrent);
     }
@@ -256,7 +275,10 @@ pub fn stamp_verified(root: &Path, path: &str, by: &str, at: &str) -> std::io::R
         Some(_) => return Err(malformed()),
     };
     let text = fs::read_to_string(&target)?;
-    let upsert = upsert_frontmatter(&text, "verified", &new_value).map_err(invalid_input)?;
+    let upsert = checked_upsert(
+        upsert_frontmatter(&text, "verified", &new_value).map_err(invalid_input)?,
+        path,
+    )?;
     if !upsert.changed {
         return Ok(Stamp::AlreadyCurrent);
     }

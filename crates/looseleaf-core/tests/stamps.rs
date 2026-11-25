@@ -233,8 +233,25 @@ fn stamp_verified_validates_the_whole_list_before_the_duplicate_check() {
 }
 
 #[test]
-fn stamp_verified_extends_a_record_that_carries_extra_entries() {
-    let dir = fixture_copy("extra-entries");
+fn stamp_verified_extends_a_record_that_carries_an_extra_scalar() {
+    let dir = fixture_copy("extra-scalar");
+    let path = dir.join("people/ada.md");
+    let text = fs::read_to_string(&path).expect("read ada");
+    let mutated = text.replace(
+        "generated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }",
+        "generated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nverified:\n  by: checker\n  at: \"2026-11-24T09:00:00Z\"\n  basis: spot check",
+    );
+    assert_ne!(mutated, text);
+    fs::write(&path, &mutated).expect("write the mutation");
+    let outcome = stamp_verified(&dir, "people/ada.md", "reviewer", "2026-11-24T10:00:00Z")
+        .expect("a record with an extra scalar entry is extendable, as the checker accepts it");
+    assert_eq!(outcome, Stamp::Stamped);
+    assert_eq!(verified_records(&dir, "people/ada.md").len(), 2);
+}
+
+#[test]
+fn stamp_verified_refuses_output_its_own_reader_cannot_take_back() {
+    let dir = fixture_copy("extra-list");
     let path = dir.join("people/ada.md");
     let text = fs::read_to_string(&path).expect("read ada");
     let mutated = text.replace(
@@ -243,10 +260,14 @@ fn stamp_verified_extends_a_record_that_carries_extra_entries() {
     );
     assert_ne!(mutated, text);
     fs::write(&path, &mutated).expect("write the mutation");
-    let outcome = stamp_verified(&dir, "people/ada.md", "reviewer", "2026-11-24T10:00:00Z")
-        .expect("a record with extra entries is extendable, as the checker accepts it");
-    assert_eq!(outcome, Stamp::Stamped);
-    assert_eq!(verified_records(&dir, "people/ada.md").len(), 2);
+    // Wrapping this record into a list carries its nested list
+    // past the depth the subset parser reads, so the rendered
+    // output would not parse. The stamp refuses and writes
+    // nothing rather than leaving an unreadable file behind.
+    let error = stamp_verified(&dir, "people/ada.md", "reviewer", "2026-11-24T10:00:00Z")
+        .expect_err("output the reader cannot take back must refuse");
+    assert!(error.to_string().contains("cannot parse"), "got {error}");
+    assert_eq!(fs::read_to_string(&path).expect("reread"), mutated);
 }
 
 #[test]
