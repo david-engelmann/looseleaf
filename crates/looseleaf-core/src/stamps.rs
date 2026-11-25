@@ -3,7 +3,10 @@
 //! The contract has the pass restamp `generated` on every concept
 //! it creates or changes in meaning, and stamp `verified` with its
 //! own actor for checks it truly ran. These are the tool's two
-//! stamp commands. Both work through the frontmatter upsert, so
+//! stamp commands, and the module also houses the deprecation act,
+//! which writes a retired concept's status, its replacement
+//! pointer and its restamp in one composed write. All three work
+//! through the frontmatter upsert, so
 //! only the stamped key's lines change, and both validate their
 //! arguments before any write, because the staleness report orders
 //! verifications as strings and one garbage stamp would falsify it
@@ -42,9 +45,14 @@ pub enum Deprecation {
 /// composed in memory and written once, so no reader sees a
 /// half-deprecated concept. A concept carrying part of the act
 /// already, the pointer without the status or the status
-/// without the pointer, is completed. A pointer naming a
-/// different replacement is refused, because repointing a
-/// deprecation is a new decision, not an execution of one.
+/// without the pointer, in the plain scalar forms the profile
+/// writes, is completed, and a standing pointer in a
+/// non-canonical form the checker accepts is canonicalized by
+/// the completion. A pointer naming a different replacement is
+/// refused, because repointing a deprecation is a new decision,
+/// not an execution of one. A replacement whose own pointer
+/// chain leads back to the target is refused, because the act
+/// would close a supersession cycle no checker rule detects.
 /// The concept's claims are untouched, the profile keeps the
 /// concept and claim axes separate.
 ///
@@ -54,9 +62,12 @@ pub enum Deprecation {
 /// optional real time, when either path names no file, a
 /// reserved file, the registry, a daily or directive file, a
 /// root file or a file that did not read cleanly, when the
-/// replacement is the target itself, when the target carries
-/// no frontmatter or a pointer that is not a plain path, or
-/// when the composed document would no longer parse.
+/// replacement is the target itself, a pass report, or the
+/// end of a cycle back to the target, when the replacement
+/// path carries an anchor a pointer cannot name, when the
+/// target carries no frontmatter, frontmatter that does not
+/// parse, or a status or pointer that is not a plain scalar,
+/// or when the composed document would no longer parse.
 pub fn deprecate_concept(
     root: &Path,
     path: &str,
@@ -64,19 +75,42 @@ pub fn deprecate_concept(
     at: &str,
 ) -> std::io::Result<Deprecation> {
     checked_stamp(at)?;
-    let (file, target) = stamp_target(root, path)?;
+    if superseded_by.contains('#') {
+        return Err(invalid_input(format!(
+            "the replacement path {superseded_by} carries an anchor, which a superseded_by pointer cannot name"
+        )));
+    }
+    let bundle = read_bundle(root);
+    let Some(file) = bundle.files.iter().find(|file| file.rel_path == path) else {
+        return Err(not_found(format!("no file at {path} in the bundle")));
+    };
+    if let Some(refusal) = stampable_refusal(file, path) {
+        return Err(refusal);
+    }
+    if file.fm_error.is_some() {
+        return Err(invalid_input(format!(
+            "{path} carries frontmatter that does not parse in the subset"
+        )));
+    }
     let Some(frontmatter) = file.frontmatter.as_ref() else {
         return Err(invalid_input(format!(
             "{path} carries no frontmatter to deprecate"
         )));
     };
+    if let Some(status) = frontmatter.get("status")
+        && !matches!(status, Value::Scalar(_))
+    {
+        return Err(invalid_input(format!(
+            "{path} carries a status that is not a plain value"
+        )));
+    }
     if let Some(existing) = frontmatter.get("superseded_by") {
         let Value::Scalar(existing) = existing else {
             return Err(invalid_input(format!(
                 "{path} carries a superseded_by that is not a plain path"
             )));
         };
-        if existing != superseded_by {
+        if normalized_pointer(existing).as_deref() != Some(superseded_by) {
             return Err(invalid_input(format!(
                 "{path} already points at {existing} as its replacement, and repointing a deprecation is a new decision"
             )));
@@ -87,7 +121,6 @@ pub fn deprecate_concept(
             "a concept cannot be deprecated in favour of itself".to_owned(),
         ));
     }
-    let bundle = read_bundle(root);
     let Some(replacement) = bundle
         .files
         .iter()
@@ -97,39 +130,25 @@ pub fn deprecate_concept(
             "no file at {superseded_by} in the bundle"
         )));
     };
-    if replacement.reserved {
-        return Err(invalid_input(format!(
-            "{superseded_by} is a reserved file, not a concept"
-        )));
-    }
-    if replacement.is_registry {
-        return Err(invalid_input(format!(
-            "{superseded_by} is the claim registry, not a concept"
-        )));
-    }
-    match replacement.layer {
-        Layer::Daily => {
-            return Err(invalid_input(format!(
-                "{superseded_by} is in the daily layer, which is never a replacement concept"
-            )));
-        }
-        Layer::Directives => {
-            return Err(invalid_input(format!(
-                "{superseded_by} is a directive concept, which the contract human-gates against change"
-            )));
-        }
-        Layer::Root => {
-            return Err(invalid_input(format!(
-                "{superseded_by} is not inside a layer directory"
-            )));
-        }
-        _ => {}
+    if let Some(refusal) = stampable_refusal(replacement, superseded_by) {
+        return Err(refusal);
     }
     if replacement.read_error || replacement.frontmatter.is_none() {
         return Err(invalid_input(format!(
             "{superseded_by} does not carry readable frontmatter"
         )));
     }
+    if replacement.layer == Layer::Synthesis && is_pass_report(superseded_by) {
+        return Err(invalid_input(format!(
+            "{superseded_by} is a synthesis pass report, not a successor concept"
+        )));
+    }
+    if chain_leads_to(&bundle, replacement, path) {
+        return Err(invalid_input(format!(
+            "deprecating {path} in favour of {superseded_by} would close a supersession cycle"
+        )));
+    }
+    let target = root.join(path);
     let text = fs::read_to_string(&target)?;
     let mut composed = upsert_frontmatter(&text, "status", &Value::Scalar("deprecated".to_owned()))
         .map_err(invalid_input)?;
@@ -141,12 +160,120 @@ pub fn deprecate_concept(
     .map_err(invalid_input)?;
     composed = upsert_frontmatter(&composed.text, "generated", &by_at_value(PASS_ACTOR, at))
         .map_err(invalid_input)?;
-    let composed = checked_upsert(composed, path)?;
+    let composed = checked_upsert(composed, path, "deprecating")?;
     if composed.text == text {
         return Ok(Deprecation::AlreadyCurrent);
     }
     write_stamp(&target, &composed.text)?;
     Ok(Deprecation::Deprecated)
+}
+
+/// Whether the file at a bundle path is a synthesis pass
+/// report, judged by the report naming pattern on its stem.
+fn is_pass_report(rel_path: &str) -> bool {
+    let name = rel_path.rsplit('/').next().unwrap_or(rel_path);
+    let stem = name
+        .get(..name.len().saturating_sub(3))
+        .filter(|_| name.to_lowercase().ends_with(".md"))
+        .unwrap_or(name);
+    crate::report::is_report_stem(stem)
+}
+
+/// Whether the pointer chain starting at `from` reaches
+/// `target`, following each concept's `superseded_by` through
+/// the bundle. The walk is bounded by the bundle's file count,
+/// so a chain that already cycles without reaching the target
+/// still ends.
+fn chain_leads_to(bundle: &crate::bundle::Bundle, from: &ConceptFile, target: &str) -> bool {
+    let mut chain_at = from;
+    for _ in 0..bundle.files.len() {
+        let Some(Value::Scalar(next)) = chain_at
+            .frontmatter
+            .as_ref()
+            .and_then(|frontmatter| frontmatter.get("superseded_by"))
+        else {
+            return false;
+        };
+        let Some(normalized) = normalized_pointer(next) else {
+            return false;
+        };
+        if normalized == target {
+            return true;
+        }
+        let Some(next_file) = bundle.files.iter().find(|file| file.rel_path == normalized) else {
+            return false;
+        };
+        chain_at = next_file;
+    }
+    false
+}
+
+/// Normalize a standing `superseded_by` pointer the way the
+/// checker's resolver does, dropping the anchor, empty and
+/// dot components and resolving parent components that stay
+/// inside the bundle, so a pointer the checker accepts as
+/// naming a file compares equal to that file's canonical
+/// path. A pointer that climbs out of the bundle normalizes
+/// to nothing.
+fn normalized_pointer(pointer: &str) -> Option<String> {
+    let path_part = pointer.split('#').next().unwrap_or("");
+    if path_part.is_empty() || path_part.starts_with('/') {
+        return None;
+    }
+    let mut parts: Vec<&str> = Vec::new();
+    for component in path_part.split('/') {
+        match component {
+            "" | "." => {}
+            ".." => {
+                parts.pop()?;
+            }
+            name => parts.push(name),
+        }
+    }
+    if parts.is_empty() {
+        return None;
+    }
+    Some(parts.join("/"))
+}
+
+/// The refusal a file draws when an act may not touch it, or
+/// nothing when the file is touchable. The stamp target ladder
+/// and the deprecation replacement ladder share this one rule
+/// set, so the two can never drift apart on what they refuse.
+fn stampable_refusal(file: &ConceptFile, path: &str) -> Option<std::io::Error> {
+    if file.reserved {
+        return Some(invalid_input(format!(
+            "{path} is a reserved file, not a concept"
+        )));
+    }
+    if file.is_registry {
+        return Some(invalid_input(
+            "claims.md is the claim registry, and its frontmatter is owned by the registry renderer"
+                .to_owned(),
+        ));
+    }
+    match file.layer {
+        Layer::Daily => {
+            return Some(invalid_input(format!(
+                "{path} is in the daily layer, which the tool never edits"
+            )));
+        }
+        Layer::Directives => {
+            return Some(invalid_input(format!(
+                "{path} is a directive concept, which the contract human-gates against change"
+            )));
+        }
+        Layer::Root => {
+            return Some(invalid_input(format!(
+                "{path} is not inside a layer directory"
+            )));
+        }
+        _ => {}
+    }
+    if file.read_error {
+        return Some(invalid_input(format!("{path} could not be read as text")));
+    }
+    None
 }
 
 /// What a stamp command did.
@@ -230,37 +357,8 @@ fn stamp_target(root: &Path, path: &str) -> std::io::Result<(ConceptFile, PathBu
     let Some(file) = bundle.files.iter().find(|file| file.rel_path == path) else {
         return Err(not_found(format!("no file at {path} in the bundle")));
     };
-    if file.reserved {
-        return Err(invalid_input(format!(
-            "{path} is a reserved file, not a concept"
-        )));
-    }
-    if file.is_registry {
-        return Err(invalid_input(
-            "claims.md is the claim registry, and its frontmatter is owned by the registry renderer"
-                .to_owned(),
-        ));
-    }
-    match file.layer {
-        Layer::Daily => {
-            return Err(invalid_input(format!(
-                "{path} is in the daily layer, which the tool never edits"
-            )));
-        }
-        Layer::Directives => {
-            return Err(invalid_input(format!(
-                "{path} is a directive concept, which the contract human-gates against change"
-            )));
-        }
-        Layer::Root => {
-            return Err(invalid_input(format!(
-                "{path} is not inside a layer directory"
-            )));
-        }
-        _ => {}
-    }
-    if file.read_error {
-        return Err(invalid_input(format!("{path} could not be read as text")));
+    if let Some(refusal) = stampable_refusal(file, path) {
+        return Err(refusal);
     }
     Ok((file.clone(), root.join(path)))
 }
@@ -277,10 +375,11 @@ fn write_stamp(target: &Path, text: &str) -> std::io::Result<()> {
 fn checked_upsert(
     upserted: crate::write::Upsert,
     path: &str,
+    act: &str,
 ) -> std::io::Result<crate::write::Upsert> {
     if parse_document(&upserted.text).parse_error.is_some() {
         return Err(invalid_input(format!(
-            "stamping {path} would leave a document the subset cannot parse, so nothing is written"
+            "{act} {path} would leave a document the subset cannot parse, so nothing is written"
         )));
     }
     Ok(upserted)
@@ -303,6 +402,7 @@ pub fn stamp_generated(root: &Path, path: &str, by: &str, at: &str) -> std::io::
     let upsert = checked_upsert(
         upsert_frontmatter(&text, "generated", &by_at_value(by, at)).map_err(invalid_input)?,
         path,
+        "stamping",
     )?;
     if !upsert.changed {
         return Ok(Stamp::AlreadyCurrent);
@@ -404,6 +504,7 @@ pub fn stamp_verified(root: &Path, path: &str, by: &str, at: &str) -> std::io::R
     let upsert = checked_upsert(
         upsert_frontmatter(&text, "verified", &new_value).map_err(invalid_input)?,
         path,
+        "stamping",
     )?;
     if !upsert.changed {
         return Ok(Stamp::AlreadyCurrent);
