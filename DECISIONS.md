@@ -656,3 +656,30 @@ the collection shapes at deeper indents, being shapes the
 parser's depth cap and the profile's nesting bar keep out
 of any bundle, with equivalence for them resting on the
 consolidation's uniform delegation to the one entry path.
+
+## D26. Phase 5 opening dispositions (2026-11-25)
+
+Phase 5 opens on Main's charge with the README status
+correction as its early slice and the design reviews'
+dispositions recorded here before any building, as D20 and
+D24 did for their phases. The cycle rule's reporting
+diverges from the claim precedent deliberately. The claim
+rule fires once per cycle at the registry, which is the
+claim graph's natural home, and keeps self-supersession
+under its own code. The concept rule fires once per
+participating concept at that concept's file and treats a
+self-pointer as a cycle of one, since the concept checks are
+per-file in idiom and a concept cycle has no registry to be
+located at. Only the cycle's own members fire, never a
+concept whose chain leads into the cycle from outside. The
+staleness escaping lives at the print site and covers the
+verified stamp beside the path, since both fields of the
+printed line can carry a line break out of a quoted
+frontmatter scalar. Its one accepted ambiguity is that a
+path literally holding a backslash and an n prints the same
+as an escaped line break, accepted because the line's
+consumer is the person reading the audited record and no
+parser reads these lines. The fixture completion stands as
+its own slice landing last, since it is surgery on a fixture
+the whole suite stands on and the earlier slices assert
+finding sets against the fixture as it stands.
