@@ -43,6 +43,31 @@ fn staleness_reports_against_the_supplied_stamp_only() {
 }
 
 #[test]
+fn staleness_report_values_stay_unescaped() {
+    let dir = fixture_copy("stale-raw");
+    fs::write(
+        dir.join("curated/weird\nname.md"),
+        "---\ntype: Curated Memory\ntitle: \"Weird\"\ndescription: \"A concept whose file name carries a line break.\"\ngenerated: { by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }\nstale_after: 2026-11-01\nverified: { by: \"process:looseleaf-synthesis\", at: \"2026-11-20T00:00:00Z\\nforged\" }\n---\n\n# Weird\n",
+    )
+    .expect("write the line break concept");
+    let stale = staleness_report(&dir, "2026-11-24T00:00:00Z").expect("report");
+    assert_eq!(stale.len(), 1);
+    assert!(
+        stale[0].path.contains('\n'),
+        "the core value is the true path, got {:?}",
+        stale[0].path
+    );
+    assert!(
+        stale[0]
+            .verified_at
+            .as_deref()
+            .is_some_and(|at| at.contains('\n')),
+        "the core stamp is the true stamp, got {:?}",
+        stale[0].verified_at
+    );
+}
+
+#[test]
 fn promotion_carries_the_claim_unchanged_and_lands_before_the_section() {
     let dir = fixture_copy("promote");
     let outcome = promote_claim(
