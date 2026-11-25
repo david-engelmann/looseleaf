@@ -514,3 +514,95 @@ fn a_malformed_stale_after_draws_a_warning() {
         "a dated stale_after is the shape the profile states"
     );
 }
+
+fn deprecate_toward(dir: &Path, rel: &str, target: &str) {
+    mutate(dir, rel, |text| {
+        text.replace(
+            "at: \"2026-11-02T01:00:00Z\" }",
+            &format!(
+                "at: \"2026-11-02T01:00:00Z\" }}\nstatus: deprecated\nsuperseded_by: {target}"
+            ),
+        )
+    });
+}
+
+fn cycle_paths(dir: &Path) -> Vec<String> {
+    let mut paths: Vec<String> = check_bundle(dir)
+        .findings
+        .iter()
+        .filter(|finding| finding.code == "FM_SUPERSEDE_CYCLE")
+        .map(|finding| finding.path.clone())
+        .collect();
+    paths.sort();
+    paths
+}
+
+fn write_third_concept(dir: &Path, target: &str) {
+    write_file(
+        dir,
+        "topics/third.md",
+        &format!(
+            "---\ntype: Topic\ntitle: \"Third\"\ndescription: \"A third concept planted by the cycle tests.\"\ngenerated: {{ by: \"process:looseleaf-synthesis\", at: \"2026-11-02T01:00:00Z\" }}\nstatus: deprecated\nsuperseded_by: {target}\nsources:\n  - id: day-one\n    resource: daily/2026-11-01.md\n    title: Daily log for 2026-11-01\n---\n\n# Third\n"
+        ),
+    );
+    write_file(dir, "topics/index.md", "# Topics\n\n* [Third](third.md)\n");
+}
+
+#[test]
+fn a_two_concept_cycle_is_caught() {
+    let dir = defect_copy("concept-cycle-two");
+    deprecate_toward(&dir, "people/ada.md", "curated/standing-facts.md");
+    deprecate_toward(&dir, "curated/standing-facts.md", "people/ada.md");
+    assert_eq!(
+        cycle_paths(&dir),
+        ["curated/standing-facts.md", "people/ada.md"],
+        "one finding per concept on the cycle"
+    );
+}
+
+#[test]
+fn a_three_concept_cycle_is_caught() {
+    let dir = defect_copy("concept-cycle-three");
+    deprecate_toward(&dir, "people/ada.md", "topics/third.md");
+    deprecate_toward(&dir, "curated/standing-facts.md", "people/ada.md");
+    write_third_concept(&dir, "curated/standing-facts.md");
+    assert_eq!(
+        cycle_paths(&dir),
+        [
+            "curated/standing-facts.md",
+            "people/ada.md",
+            "topics/third.md"
+        ]
+    );
+}
+
+#[test]
+fn a_self_pointer_is_a_cycle_of_one() {
+    let dir = defect_copy("concept-cycle-self");
+    deprecate_toward(&dir, "people/ada.md", "people/ada.md");
+    assert_eq!(cycle_paths(&dir), ["people/ada.md"]);
+}
+
+#[test]
+fn a_chain_leading_into_a_cycle_does_not_fire_for_the_tail() {
+    let dir = defect_copy("concept-cycle-tail");
+    deprecate_toward(&dir, "people/ada.md", "curated/standing-facts.md");
+    deprecate_toward(&dir, "curated/standing-facts.md", "people/ada.md");
+    write_third_concept(&dir, "people/ada.md");
+    assert_eq!(
+        cycle_paths(&dir),
+        ["curated/standing-facts.md", "people/ada.md"],
+        "the tail concept is deprecated in good faith and does not fire"
+    );
+}
+
+#[test]
+fn a_converging_chain_is_not_a_cycle() {
+    let dir = defect_copy("concept-converge");
+    deprecate_toward(&dir, "people/ada.md", "curated/standing-facts.md");
+    write_third_concept(&dir, "curated/standing-facts.md");
+    assert!(
+        cycle_paths(&dir).is_empty(),
+        "two concepts replaced by one live successor is ordinary"
+    );
+}

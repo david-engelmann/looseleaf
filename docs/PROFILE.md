@@ -92,7 +92,10 @@ Further keys carry fixed meanings.
   and would otherwise skip the concept in silence.
 - `status` and `superseded_by` are used exactly as the standard defines
   them. A replaced concept is deprecated and points at its replacement.
-  Concepts are deprecated, never deleted, without a human gate.
+  Concepts are deprecated, never deleted, without a human gate. The
+  pointers form a graph that must terminate at a live concept, and the
+  checker errors on any cycle in it, since a cycle leaves no concept in
+  the chain standing as the current one.
 - Extension keys carry the `x-looseleaf-` prefix, for example
   `x-looseleaf-rank`, the closeness rank on Person and Group concepts
   that drives index ordering. Unknown keys are preserved untouched by
