@@ -133,27 +133,17 @@ fn render_list(lines: &mut Vec<String>, indent: usize, items: &[Value]) {
                 for (key, value) in entries {
                     if first {
                         // The first entry rides on the dash line.
-                        match value {
-                            Value::Scalar(text) => {
-                                lines.push(format!("{pad}- {key}: {}", render_scalar(text)));
-                            }
-                            Value::List(nested) => {
-                                if nested.is_empty() {
-                                    lines.push(format!("{pad}- {key}: []"));
-                                } else {
-                                    lines.push(format!("{pad}- {key}:"));
-                                    render_list(lines, indent + 4, nested);
-                                }
-                            }
-                            Value::Map(nested_entries) => {
-                                if nested_entries.is_empty() {
-                                    lines.push(format!("{pad}- {key}: {{}}"));
-                                } else {
-                                    lines.push(format!("{pad}- {key}:"));
-                                    for (k, v) in nested_entries {
-                                        render_entry(lines, indent + 4, k, v);
-                                    }
-                                }
+                        // It renders through the same entry path as
+                        // every other entry, at the entry indent,
+                        // and only its first line trades the entry
+                        // padding for the dash.
+                        let mut rendered = Vec::new();
+                        render_entry(&mut rendered, indent + 2, key, value);
+                        for (index, line) in rendered.into_iter().enumerate() {
+                            if index == 0 {
+                                lines.push(format!("{pad}- {}", &line[indent + 2..]));
+                            } else {
+                                lines.push(line);
                             }
                         }
                         first = false;
