@@ -142,7 +142,8 @@ pub fn staleness_report(root: &Path, at: &str) -> std::io::Result<Vec<StaleEntry
 ///
 /// Returns an error when the stamp carries no real calendar
 /// date, or when a supplied path names no file in the bundle, a
-/// reserved file, the claim registry, or a daily file.
+/// reserved file, the claim registry, a daily file, or a
+/// directive concept.
 pub fn reverification_queue(
     root: &Path,
     at: &str,
@@ -179,6 +180,11 @@ pub fn reverification_queue(
         if file.layer == Layer::Daily {
             return Err(invalid(format!(
                 "{path} is in the daily layer, which a pass never changes"
+            )));
+        }
+        if file.layer == Layer::Directives {
+            return Err(invalid(format!(
+                "{path} is a directive concept, which the contract human-gates against change"
             )));
         }
         if !queue.contains(path) {
