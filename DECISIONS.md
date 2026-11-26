@@ -981,77 +981,6 @@ dogfood records' silence, which is named here as the
 absence claim it is. The set is recorded as settled, to
 be reopened only by a finding with evidence behind it.
 
-## D33. The withheld obligation scoped to carried claims (2026-11-25)
-
-The Phase 8 dogfood surfaced a tool finding, the first
-under the triage rule D32 recorded. Over the prototype
-copy, write-registry produced a registry the checker
-then faulted with two REGISTRY_WITHHELD errors that no
-action can clear, each demanding a withheld line for a
-supersedes pointer whose target no layer carries. The
-corpus carries two such pointers, claims in the daily
-layer whose supersedes names the superseded claim in
-prose rather than by identity, the source convention's
-drift, and the supersession graph already flags each as
-CLAIM_SUPERSEDES_DANGLING at its own file. The registry
-validator built its withheld expectation from every
-supersedes pointer in every layer, while the renderer
-presents only claims the bundle carries and the graph
-checker scopes its edges to the daily and curated layers
-and to carried targets, so a registry the tool itself
-wrote could never satisfy the tool's own check on such a
-corpus. The repair scopes the validator's expectation to
-the renderer's and the graph checker's discipline, the
-daily and curated layers and targets a layer carries, so
-a dangling pointer is the graph's one finding and creates
-no withheld obligation. No finding code, severity or
-message changes for any satisfiable case, and the two
-prose pointers stand as corpus findings, banked in the
-Phase 8 dogfood record with their evidence.
-
-## D34. Phase 8 checkpoint dispositions (2026-11-25)
-
-The checkpoint reviews over the Phase 8 diff found the
-phase faithful to its scope, the spec review with no
-material or moderate findings and the standards review
-with none above a Low. The repairs below come from the
-red team's one P2 and the findings it stood beside. The
-second repair test D33 carried, planting a claim block
-in a bank concept, pinned nothing, since the bundle
-loader scans claims only in the daily and curated layers
-and the planted block was invisible to the validator, the
-renderer and the graph alike before the repair and after
-it. The test is removed, and D33's sentence crediting two
-tests is corrected here, one test pinning the repair, the
-dangling pointer case, and the layer guard in the
-validator standing as a statement of the discipline under
-the loader's older guarantee rather than as a behaviour
-the suite can catch. The same review found the
-validator's scan of superseded sections wider than the
-renderer's by the reserved curated files, so a section
-entry standing only in a layer log would have made the
-validator demand a reason the writer never prints, an
-obligation of the family D33 repaired. The scan now
-skips reserved files as the renderer's does, and a test
-pins the case on a writer generated registry, its
-withheld line asserted present in its printed form.
-Duplicate superseded section entries for one claim
-carrying different reasons stand as a recorded residue,
-the renderer's map keeping the last entry's reason while
-the validator searches by identity and replacement
-together, so the two can disagree only on a corpus
-carrying such duplicates, and no case stands in any
-record. The standards review's Low is corrected here as
-the register's convention provides, D32's sentence
-resting the queue closure on the verified registry and
-the concepts' stamps, where the derivation the dogfood
-ran followed the bundle walker's eligibility rules and
-the queue's rule consults neither, as the dogfood record
-already states. The spec review's three minors stand as
-recorded corrections in the dogfood record, the census
-premise, the queue movement's supplied set, and the
-derivation sentence this entry also corrects.
-
 ## D35. Phase 9 design dispositions (2026-11-26)
 
 Phase 9 closes the one member of the validator and
@@ -1189,3 +1118,102 @@ repair no act of this product, and the settled acceptance
 set stands as D32 as corrected by D34 and bounded by
 D36 left it, settled, to be reopened only by a finding
 with evidence behind it.
+
+## D38. Phase 10 checkpoint dispositions (2026-11-26)
+
+The checkpoint reviews over the Phase 10 diff found the
+phase faithful to its scope, the standards review with no
+High and no Moderate findings, the spec review with no
+MATERIAL and no moderate, and the red team with no P1 or
+P2. The dispositions stand here. D37's ground rests on
+D20 as well as D9, the stamp ladder's refusal of a
+directive concept and its recorded reason being D20's
+entry, and the citation the scope's pin named stands
+supplied here, the entry's substance having carried the
+ground without its number. The refusal table's new case
+pins the directive ground by its phrase, the table's
+standing shape, so a future rewording of the message's
+tail would pass the case unnoticed. The bound is accepted
+as the house's shape for this ladder, its mitigation on
+this phase's own evidence being the dogfood transcript,
+which prints the full sentence from the shipped binary
+beside the stamp ladder's identical words. The dogfood's
+refusal run stood before the pass opened rather than
+after the deprecate step as the scope's sequence
+paragraph listed it, the ordering the scope's sentence
+charged, refusal before membership, having held between
+the two queue runs themselves. The placement is inert,
+the queue being a list that never edits and reads neither
+the registry nor any stamp, and the record disclosed it
+in its own text.
+
+## D33. The withheld obligation scoped to carried claims (2026-11-25)
+
+The Phase 8 dogfood surfaced a tool finding, the first
+under the triage rule D32 recorded. Over the prototype
+copy, write-registry produced a registry the checker
+then faulted with two REGISTRY_WITHHELD errors that no
+action can clear, each demanding a withheld line for a
+supersedes pointer whose target no layer carries. The
+corpus carries two such pointers, claims in the daily
+layer whose supersedes names the superseded claim in
+prose rather than by identity, the source convention's
+drift, and the supersession graph already flags each as
+CLAIM_SUPERSEDES_DANGLING at its own file. The registry
+validator built its withheld expectation from every
+supersedes pointer in every layer, while the renderer
+presents only claims the bundle carries and the graph
+checker scopes its edges to the daily and curated layers
+and to carried targets, so a registry the tool itself
+wrote could never satisfy the tool's own check on such a
+corpus. The repair scopes the validator's expectation to
+the renderer's and the graph checker's discipline, the
+daily and curated layers and targets a layer carries, so
+a dangling pointer is the graph's one finding and creates
+no withheld obligation. No finding code, severity or
+message changes for any satisfiable case, and the two
+prose pointers stand as corpus findings, banked in the
+Phase 8 dogfood record with their evidence.
+
+## D34. Phase 8 checkpoint dispositions (2026-11-25)
+
+The checkpoint reviews over the Phase 8 diff found the
+phase faithful to its scope, the spec review with no
+material or moderate findings and the standards review
+with none above a Low. The repairs below come from the
+red team's one P2 and the findings it stood beside. The
+second repair test D33 carried, planting a claim block
+in a bank concept, pinned nothing, since the bundle
+loader scans claims only in the daily and curated layers
+and the planted block was invisible to the validator, the
+renderer and the graph alike before the repair and after
+it. The test is removed, and D33's sentence crediting two
+tests is corrected here, one test pinning the repair, the
+dangling pointer case, and the layer guard in the
+validator standing as a statement of the discipline under
+the loader's older guarantee rather than as a behaviour
+the suite can catch. The same review found the
+validator's scan of superseded sections wider than the
+renderer's by the reserved curated files, so a section
+entry standing only in a layer log would have made the
+validator demand a reason the writer never prints, an
+obligation of the family D33 repaired. The scan now
+skips reserved files as the renderer's does, and a test
+pins the case on a writer generated registry, its
+withheld line asserted present in its printed form.
+Duplicate superseded section entries for one claim
+carrying different reasons stand as a recorded residue,
+the renderer's map keeping the last entry's reason while
+the validator searches by identity and replacement
+together, so the two can disagree only on a corpus
+carrying such duplicates, and no case stands in any
+record. The standards review's Low is corrected here as
+the register's convention provides, D32's sentence
+resting the queue closure on the verified registry and
+the concepts' stamps, where the derivation the dogfood
+ran followed the bundle walker's eligibility rules and
+the queue's rule consults neither, as the dogfood record
+already states. The spec review's three minors stand as
+recorded corrections in the dogfood record, the census
+premise, the queue movement's supplied set, and the
+derivation sentence this entry also corrects.
