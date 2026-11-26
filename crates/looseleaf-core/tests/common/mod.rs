@@ -45,6 +45,17 @@ pub fn fixture_copy(prefix: &str, name: &str) -> PathBuf {
     dir
 }
 
+/// The text of a shared plant document, one of the planted
+/// concept documents the test files share from the fixtures
+/// directory beside the clean fixture.
+pub fn shared_plant(name: &str) -> String {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("fixtures")
+        .join(name);
+    fs::read_to_string(&path).expect("read the shared plant")
+}
+
 /// A sentinel file outside a fixture bundle that a planted
 /// symbolic link points at. The file is removed when the
 /// guard drops, so a failed assertion cleans up as well as
