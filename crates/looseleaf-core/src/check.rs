@@ -1266,8 +1266,18 @@ fn check_registry(bundle: &Bundle, known: &BTreeSet<&String>, out: &mut Findings
     // reason whenever the curated record carries one.
     let mut replacements: BTreeMap<&str, &str> = BTreeMap::new();
     for file in &bundle.files {
+        if !matches!(file.layer, Layer::Daily | Layer::Curated) {
+            continue;
+        }
         for claim in &file.claims {
             if let (Some(id), Some(target)) = (&claim.id, &claim.supersedes) {
+                if !known.contains(target) {
+                    // A pointer no layer carries is the supersession
+                    // graph's dangling finding, and the renderer can
+                    // only present claims the bundle carries, so the
+                    // pointer creates no withheld obligation here.
+                    continue;
+                }
                 // First claimant wins, matching the renderer's
                 // deterministic choice for a forked supersession.
                 replacements.entry(target.as_str()).or_insert(id.as_str());
