@@ -119,4 +119,17 @@ fn the_queue_refuses_a_path_carrying_a_separator() {
         error.to_string().contains("carries a line break"),
         "got {error}"
     );
+    // The refusal fires on the caller's path before any file
+    // lookup, so the set's remaining members pin against
+    // constructed paths, each refused for its line break and
+    // not for a missing file.
+    for separator in ['\u{b}', '\u{c}', '\u{85}', '\u{2029}'] {
+        let path = format!("curated/weird{separator}name.md");
+        let error = reverification_queue(&dir, AT, &paths(&[path.as_str()]))
+            .expect_err("the queue must refuse");
+        assert!(
+            error.to_string().contains("carries a line break"),
+            "for {path:?}, got {error}"
+        );
+    }
 }
