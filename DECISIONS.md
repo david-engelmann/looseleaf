@@ -980,3 +980,31 @@ mentioning it, its standing resting in part on the
 dogfood records' silence, which is named here as the
 absence claim it is. The set is recorded as settled, to
 be reopened only by a finding with evidence behind it.
+
+## D33. The withheld obligation scoped to carried claims (2026-11-25)
+
+The Phase 8 dogfood surfaced a tool finding, the first
+under the triage rule D32 recorded. Over the prototype
+copy, write-registry produced a registry the checker
+then faulted with two REGISTRY_WITHHELD errors that no
+action can clear, each demanding a withheld line for a
+supersedes pointer whose target no layer carries. The
+corpus carries two such pointers, claims in the daily
+layer whose supersedes names the superseded claim in
+prose rather than by identity, the source convention's
+drift, and the supersession graph already flags each as
+CLAIM_SUPERSEDES_DANGLING at its own file. The registry
+validator built its withheld expectation from every
+supersedes pointer in every layer, while the renderer
+presents only claims the bundle carries and the graph
+checker scopes its edges to the daily and curated layers
+and to carried targets, so a registry the tool itself
+wrote could never satisfy the tool's own check on such a
+corpus. The repair scopes the validator's expectation to
+the renderer's and the graph checker's discipline, the
+daily and curated layers and targets a layer carries, so
+a dangling pointer is the graph's one finding and creates
+no withheld obligation. No finding code, severity or
+message changes for any satisfiable case, and the two
+prose pointers stand as corpus findings, banked in the
+Phase 8 dogfood record with their evidence.
