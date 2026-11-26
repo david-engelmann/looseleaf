@@ -79,12 +79,13 @@ fn the_queue_refuses_paths_it_cannot_carry() {
         "---\ntype: Topic\ntitle: \"Stray\"\ndescription: \"A file at the bundle root.\"\ngenerated: { by: \"human:david\", at: \"2026-11-02T00:00:00Z\" }\n---\n\n# Stray\n",
     )
     .expect("write a root file");
-    let cases: [(&str, &str); 5] = [
+    let cases: [(&str, &str); 6] = [
         ("daily/2026-11-01.md", "daily layer"),
         ("claims.md", "registry"),
         ("curated/index.md", "not a concept"),
         ("notes.md", "not a concept"),
         ("curated/missing.md", "no file at"),
+        ("directives/house-rules.md", "directive concept"),
     ];
     for (path, phrase) in cases {
         let error =
