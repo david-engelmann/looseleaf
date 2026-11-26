@@ -1287,7 +1287,7 @@ fn check_registry(bundle: &Bundle, known: &BTreeSet<&String>, out: &mut Findings
     let section_entries: Vec<crate::registry::SupersededEntry> = bundle
         .files
         .iter()
-        .filter(|file| file.layer == Layer::Curated)
+        .filter(|file| file.layer == Layer::Curated && !file.reserved)
         .flat_map(|file| section_entries_in(&file.body))
         .collect();
     for (old, new) in &replacements {

@@ -451,18 +451,27 @@ fn a_dangling_supersedes_pointer_creates_no_withheld_obligation() {
 }
 
 #[test]
-fn a_supersedes_pointer_outside_the_claim_layers_creates_no_withheld_obligation() {
-    // Claim blocks outside the daily and curated layers are not
-    // the registry's material, for the renderer, the supersession
-    // graph or this obligation. A bank claim pointing at a carried
-    // claim withholds nothing.
-    let dir = defect_copy("registry-bank-pointer");
-    mutate(&dir, "bank/facts.md", |text| {
+fn a_superseded_section_in_a_reserved_file_creates_no_reason_obligation() {
+    // The renderer reads superseded sections only in curated
+    // concepts, never in reserved files, so a section entry in
+    // the layer log must not make the validator demand a reason
+    // the writer never prints.
+    let dir = defect_copy("registry-reserved-section");
+    mutate(&dir, "daily/2026-11-02.md", |text| {
         format!(
-            "{text}\n- [fact|high] A bank claim pointing at a daily claim.\n  - claim: 55555555555555555555555555555555\n  - quote: \"pointed\"\n  - sources: message:m-9\n  - supersedes: 22222222222222222222222222222222\n"
+            "{text}\n- [fact|high] A claim replacing the tea claim.\n  - claim: 44444444444444444444444444444444\n  - quote: \"coffee now\"\n  - sources: message:m-9\n  - supersedes: 22222222222222222222222222222222\n"
+        )
+    });
+    mutate(&dir, "curated/log.md", |text| {
+        format!(
+            "{text}\n## Superseded claims\n\n- 22222222222222222222222222222222 The user prefers tea over coffee. Replaced by 44444444444444444444444444444444 on 2026-11-02, a reserved reason.\n"
         )
     });
     regenerate_registry(&dir, "2026-11-03T00:00:00Z").expect("regenerate the registry");
+    let registry = fs::read_to_string(dir.join("claims.md")).expect("read the registry");
+    assert!(registry.contains(
+        "- 22222222222222222222222222222222 withheld, superseded by 44444444444444444444444444444444 on 2026-11-02."
+    ));
     assert!(!codes(&dir).contains(&"REGISTRY_WITHHELD"));
 }
 
