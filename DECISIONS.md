@@ -1051,3 +1051,63 @@ already states. The spec review's three minors stand as
 recorded corrections in the dogfood record, the census
 premise, the queue movement's supplied set, and the
 derivation sentence this entry also corrects.
+
+## D35. Phase 9 design dispositions (2026-11-26)
+
+Phase 9 closes the one member of the validator and
+renderer disagreement family D34 left standing and runs
+the pass for the first time as the cycle the contract
+describes. The residue's mechanics are these. The
+renderer's scan of the curated layer's superseded
+sections builds its map by the superseded identity alone,
+skipping reserved files, and inserts over earlier
+entries, so the last entry in bundle order supplies the
+date and reason printed beside whichever replacement the
+claims' own map names, the first claimant in bundle
+order. The validator searches the same entries by
+identity and replacement together and demands the first
+matching entry's reason in the withheld line. On a corpus
+carrying duplicate entries for one claim the two
+disagree, the writer printing one supersession's reason
+where the checker demands another's, and a registry the
+writer generated fails the tool's own check. The
+alignment moves the renderer to the validator's keying,
+the first entry in bundle order whose identity and
+replacement both match the line being printed supplying
+its date and reason, with the standing fallback to the
+replacement's daily date and no reason when no entry
+matches. The move retires the renderer's documented last
+entry rule, its comment recording that the last in path
+order wins, and adopts the first match both replacements
+maps already use, so on a corpus with duplicate matching
+entries the printed date moves with the printed reason.
+The boundary of the closure is stated as plainly. The
+validator reaches a withheld line's replacement by its
+prefix and its reason by substring and never checks its
+date, so the family closed here is the reason and
+replacement disagreement, the date standing outside the
+validator's reach by design. The closure is recorded
+against the standing D34 left, and two tests pin it with
+their plant order fixed in the scope, duplicate entries
+naming one replacement and entries naming different
+replacements with the other replacement's entry standing
+last. The evidence half of the phase is the pass cycle
+itself, a pass changing a concept in meaning, the queue
+carrying exactly that changed set under D22, the report
+recording the pass, a second registry regeneration over
+the registry the first one wrote examined line by line,
+and the re-verification act standing separate after the
+pass closes, on the division D20 records. Its closure
+rests on a derivation made before the run, the queue's
+membership, the stampability of every concept the run
+will stamp, the second regeneration's shape and the final
+check's delta share by share, each read from the
+baseline's own lines. What the cycle does not close is
+recorded with it, a changed set larger than one concept
+awaiting a pass that authors changes at scale. The two
+prose supersedes pointers banked in Phase 8 stand as
+corpus findings still, their treatment complete under
+D33 and their repair no act of this product. The
+acceptance set stands as D32 as corrected by D34 left it,
+settled, to be reopened only by a finding with evidence
+behind it.
