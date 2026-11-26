@@ -1365,3 +1365,101 @@ new ruling. The settled acceptance set stands as D32 as
 corrected by D34 and bounded by D36 and D38 left it,
 settled, to be reopened only by a finding with evidence
 behind it.
+
+## D40. Phase 11 checkpoint dispositions (2026-11-26)
+
+The checkpoint reviews over this phase found the pass's
+mechanical integrity complete and its judgment defective
+in one place. The spec review found no MATERIAL and no
+moderate finding, with three minors. The standards
+review found no High and no Moderate, with three Low and
+five Nits. The red team found one P2 and four P3. Every
+derivation the run printed held under all three audits,
+the check counts reproduced on a pristine copy under the
+red team's own hand, the registry and the report read as
+recorded, and every promoted claim's carry proved exact
+as parsed values. What failed was placement judgment,
+and it failed in the open, under the audit the phase
+exists to face.
+
+The P2 stands against three of the eight promotions. The
+dusk.fm claims e7598e15, 75a4d811 and edc5837c, in the
+short forms the dogfood record gives in full, were
+placed in the Maidan connected apps strategy concept,
+whose stated subject is Maidan's strategy and whose body
+is Maidan's decisions, on reasons that bridged the gap
+with the shared phrase connected apps. The claims are
+about dusk.fm, and the covering home stood inside the
+target set, the Facts concept's body carrying the
+dusk.fm connected app goal in the survey claim's own
+words. The placements were wrong under the target rule
+this phase banked, and the error was the list author's.
+The repair is a corrected run, executed on a fresh copy
+with the three claims promoted into the Facts concept
+under reasons naming the goal its body carries, the
+first run preserved in the stage as the audit's evidence
+and the corrected run standing as the phase's executed
+pass. The remaining placements were audited claim by
+claim and held, the poisoning ladder report in the
+programme's own concept and the three flagship claims on
+the six flagships concept's own text, the summit
+direction the weakest of them and within the subject
+through the link the concept's body itself draws.
+
+Three P3 corrections ride with the repair. The blocked
+list's blanket reason was false for the four verirun
+claims, whose programme the greenfield flagships concept
+already carries in completed form with the same tally
+the claims report in intermediate form, and the
+corrected list states their true reason, that promotion
+would plant a stale state under a carried fact. The
+Facts promotion's reason now states the rule that
+separates it from the blocked operational claims, a
+durable personal fact as against operational state, one
+of the blocked family being outright superseded by a
+later claim in the same log. And the census figure D39
+banks is corrected here. The bundle carries 168 claim
+openings, of which 32 carry no identity, not the 170 and
+34 the design reviews' scan produced and the scope and
+D39 inherited. The shipped tool is a third count and
+sides with the mirror, its registry listing 136
+identities and its baseline carrying 32 CLAIM_NO_ID
+findings over the pristine prototype. No gate, list or
+derivation is affected, every population the pass acts
+on standing corroborated by the tool's own counts, and
+D39's sentence stands corrected in this entry under the
+register's convention.
+
+The remaining findings are of record and instrument
+precision, each dispositioned. The second write-registry
+in the first run ran at the pass stamp rather than a
+later one, a deviation from the scope's letter with no
+evidentiary loss, the byte comparison being the stronger
+examination, and the corrected run follows the letter,
+its second registry at a later stamp with the generated
+line alone moving. The report's queue section in the
+first run omitted the printed queue's closing line, and
+the corrected run pastes the queue whole. The dogfood
+record's CLAIM_KIND sentence credited the runner with an
+append order simulation it does not contain, and the
+correction stands here, the kind check being the
+operator's pre run analysis of the promoted kinds
+against the baseline's own CLAIM_KIND lines, its outcome
+confirmed independently by the exact final delta. The
+transcript's census line mislabeled its count, 144 being
+the distinct claim tuples across all extracted rows with
+the 136 identified among them, and the instrument now
+states what it counts. The runner's report leg was write
+only, and the corrected run's runner reads the report
+back and counts its sections. The standards Nits, a
+broad sentence in D39 on source resolution where the
+precise form is the per claim rule, and matters of the
+record's own form, stand noted without repair. The
+settled acceptance set stands as D32 as corrected by D34
+and bounded by D36 and D38 left it, settled, to be
+reopened only by a finding with evidence behind it, and
+the changed set bound stands retired by the corrected
+run, its coverage reported as it stands at 8 of 102, the
+remainder naming the families a future pass that creates
+concepts would weigh, which no charge in this phase
+carried.
