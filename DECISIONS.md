@@ -1008,3 +1008,46 @@ no withheld obligation. No finding code, severity or
 message changes for any satisfiable case, and the two
 prose pointers stand as corpus findings, banked in the
 Phase 8 dogfood record with their evidence.
+
+## D34. Phase 8 checkpoint dispositions (2026-11-25)
+
+The checkpoint reviews over the Phase 8 diff found the
+phase faithful to its scope, the spec review with no
+material or moderate findings and the standards review
+with none above a Low. The repairs below come from the
+red team's one P2 and the findings it stood beside. The
+second repair test D33 carried, planting a claim block
+in a bank concept, pinned nothing, since the bundle
+loader scans claims only in the daily and curated layers
+and the planted block was invisible to the validator, the
+renderer and the graph alike before the repair and after
+it. The test is removed, and D33's sentence crediting two
+tests is corrected here, one test pinning the repair, the
+dangling pointer case, and the layer guard in the
+validator standing as a statement of the discipline under
+the loader's older guarantee rather than as a behaviour
+the suite can catch. The same review found the
+validator's scan of superseded sections wider than the
+renderer's by the reserved curated files, so a section
+entry standing only in a layer log would have made the
+validator demand a reason the writer never prints, an
+obligation of the family D33 repaired. The scan now
+skips reserved files as the renderer's does, and a test
+pins the case on a writer generated registry, its
+withheld line asserted present in its printed form.
+Duplicate superseded section entries for one claim
+carrying different reasons stand as a recorded residue,
+the renderer's map keeping the last entry's reason while
+the validator searches by identity and replacement
+together, so the two can disagree only on a corpus
+carrying such duplicates, and no case stands in any
+record. The standards review's Low is corrected here as
+the register's convention provides, D32's sentence
+resting the queue closure on the verified registry and
+the concepts' stamps, where the derivation the dogfood
+ran followed the bundle walker's eligibility rules and
+the queue's rule consults neither, as the dogfood record
+already states. The spec review's three minors stand as
+recorded corrections in the dogfood record, the census
+premise, the queue movement's supplied set, and the
+derivation sentence this entry also corrects.
