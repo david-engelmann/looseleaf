@@ -476,6 +476,58 @@ fn a_superseded_section_in_a_reserved_file_creates_no_reason_obligation() {
 }
 
 #[test]
+fn duplicate_section_entries_present_the_first_matching_reason() {
+    // Two entries record the same supersession with different
+    // reasons. The withheld line takes the first matching
+    // entry's reason, the one the validator demands, not the
+    // last entry the section happens to end with.
+    let dir = defect_copy("registry-duplicate-entries");
+    mutate(&dir, "curated/standing-facts.md", |text| {
+        format!(
+            "{text}\n- 11111111111111111111111111111111 The team standup is at 09:30. Replaced by 33333333333333333333333333333333 on 2026-11-02, a later retelling.\n"
+        )
+    });
+    regenerate_registry(&dir, "2026-11-03T00:00:00Z").expect("regenerate the registry");
+    let registry = fs::read_to_string(dir.join("claims.md")).expect("read the registry");
+    assert!(registry.contains("Reason, the standup time changed."));
+    assert!(!registry.contains("a later retelling"));
+    assert!(!codes(&dir).contains(&"REGISTRY_WITHHELD"));
+}
+
+#[test]
+fn a_section_entry_for_another_replacement_lends_no_reason() {
+    // Two entries record two supersessions of one claim. The
+    // line for the replacement the claims name takes only its
+    // own entry's reason, though the other entry stands last
+    // in the section.
+    let dir = defect_copy("registry-entry-other-replacement");
+    mutate(&dir, "curated/standing-facts.md", |text| {
+        text.replacen(
+            "## Superseded claims",
+            "- [fact|high] A claim replacing the tea claim in the curated record.\n  - claim: 44444444444444444444444444444444\n  - quote: \"coffee in the curated record\"\n  - sources: message:m-9\n  - supersedes: 22222222222222222222222222222222\n\n## Superseded claims",
+            1,
+        )
+    });
+    mutate(&dir, "daily/2026-11-02.md", |text| {
+        format!(
+            "{text}\n- [fact|high] A claim replacing the tea claim in the daily record.\n  - claim: 55555555555555555555555555555555\n  - quote: \"coffee in the daily record\"\n  - sources: message:m-9\n  - supersedes: 22222222222222222222222222222222\n"
+        )
+    });
+    mutate(&dir, "curated/standing-facts.md", |text| {
+        format!(
+            "{text}\n- 22222222222222222222222222222222 The user prefers tea over coffee. Replaced by 44444444444444444444444444444444 on 2026-11-02, the first recorded reason.\n- 22222222222222222222222222222222 The user prefers tea over coffee. Replaced by 55555555555555555555555555555555 on 2026-11-02, the second recorded reason.\n"
+        )
+    });
+    regenerate_registry(&dir, "2026-11-03T00:00:00Z").expect("regenerate the registry");
+    let registry = fs::read_to_string(dir.join("claims.md")).expect("read the registry");
+    assert!(registry.contains(
+        "- 22222222222222222222222222222222 withheld, superseded by 44444444444444444444444444444444 on 2026-11-02. Reason, the first recorded reason."
+    ));
+    assert!(!registry.contains("the second recorded reason"));
+    assert!(!codes(&dir).contains(&"REGISTRY_WITHHELD"));
+}
+
+#[test]
 fn bank_shape_is_caught() {
     let dir = defect_copy("bank-shape");
     write_file(&dir, "bank/index.md", "# Memory bank\n");
