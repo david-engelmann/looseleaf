@@ -903,3 +903,80 @@ complete pin. One phrase of D30 is noted here, since D30
 is landed history. Its second paragraph says this entry's
 phase where the register's standing form is this phase.
 The sentence's content is accurate and stands.
+
+## D32. Phase 8 design dispositions (2026-11-25)
+
+This phase opens by correcting its own scope draft on
+the programme's records. The draft stated that the
+registry writer, the re-verification queue and the stamp
+commands had only ever run against the clean fixture,
+never against a real converted tree. The Phase 6 dogfood
+record shows write-registry run over a fresh copy of the
+prototype bundle, the registry created on claims.md and
+its standing absence resolved in the final check. The
+Phase 3 dogfood record shows stamp-generated and
+stamp-verified run over the prototype copy and the queue
+run over one real concept in it, and the Phase 6 dogfood
+ran stamp-generated over the prototype again. The stamps
+act on concepts rather than claims in any case, and the
+queue never reads a registry, its membership being the
+concepts a pass changed, supplied one by one under D22.
+The draft's slice, a fresh conversion of the current
+tree by the prototype migrator, is withdrawn on four
+grounds the design reviews established. The migrator
+emits no claim registry and no directives layer. A
+directives layer cannot be produced mechanically at all,
+directive creation standing at the human gate under the
+contract. The migrator's daily sample is three fixed
+days, so a rerun's claim bearing layer is the layer every
+dogfood already carries. And the migrator's output path
+is the prototype directory itself, so a rerun would
+overwrite the Phase 1 snapshot and rewrite the loss
+ledger, the two records the draft's own never list
+promised to protect.
+
+What the phase takes is the narrower ground the reviews
+found standing. Phase 6 created the registry as a plant
+target and banked no census of its contents, so no
+dogfood has examined a generated registry against the
+corpus it was generated from, and the queue has never
+run over more than the one hand fed concept of Phase 3.
+The phase closes both gaps over the existing prototype
+under the Phase 1 fixture sharing as approved, on a
+fresh copy the dogfood makes, the banked prototype never
+written to. The registry closure rests on a mechanical
+comparison, a census taken independently from the copy's
+daily and curated layers set against the generated
+registry entry by entry, with the design record's Phase
+1 census of the same tree standing as the independent
+expectation. The queue closure rests on a derivation,
+the expected membership worked out from the verified
+registry and the concepts' stamps before the command
+runs and matched against the printed queue line for
+line. Findings the run surfaces are classed before any
+is acted on, a checker verdict over the converted tree
+being a corpus finding that is banked and counted, and a
+command's output contradicting the corpus evidence, the
+derived expectation or the tool's own contract being a
+tool finding, which alone earns a repair or a standing
+recorded here. Tool findings past three stop the phase
+for a report to Main rather than growing it.
+
+The standings D30 carried are re-weighed and stand, the
+one-second report collision on D23's reason with the
+multi-append observation, D20's companions on their
+recorded reasons, the cycle walk's cost on termination
+and correctness with the untrusted provenance caveat, the
+unextracted walk skeleton on its third-walk trigger, the
+registry in the walk's node set as correct detection,
+the write_body window under the single-writer term, and
+the success and stderr lines raw on D28's reasoning.
+The host writer type key collision logged as L-05 in the
+design record stands at risk by its Phase 1 disposition,
+the checker re-deriving the expected type from the
+directory, and this entry is its first re-weighing since
+Phase 1, the Phase 6 and Phase 7 scopes nowhere
+mentioning it, its standing resting in part on the
+dogfood records' silence, which is named here as the
+absence claim it is. The set is recorded as settled, to
+be reopened only by a finding with evidence behind it.
