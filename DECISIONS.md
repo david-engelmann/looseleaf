@@ -1143,3 +1143,49 @@ report's sections executed under the writer's fixed
 vocabulary where the scope had named a section it does
 not carry, stands dispositioned in the dogfood record
 where the run produced it.
+
+## D37. Phase 10 design dispositions (2026-11-26)
+
+The re-verification queue's refusal ladder and the stamp
+ladder disagree on one concept class. The stamp ladder
+refuses a directive concept in terms, the path being a
+directive concept, which the contract human-gates against
+change, and the one ladder serves both stamps and
+deprecate's target and replacement, so no stamp and no
+deprecation can touch a directive. The queue refuses a
+path carrying a separator, a path naming no file, the
+claim registry, a file that is not a managed concept and
+a daily file, and nothing else, so a directive concept
+passes its checks and prints as changed in a pass. The
+admission is the seam this phase closes. The queue's
+membership is the concepts a pass created or changed in
+meaning, and creating, changing or retiring a directive
+stands reserved to the human gate under D9, so no pass
+change can place a directive in the set honestly, and the
+printed queue hands the concept to a verification stamp
+that refuses it, the handoff D22 built breaking at its
+receiving step. The alignment gives the queue a directive
+arm carrying the ladder's own reason, placed after the
+managed concept check beside the daily refusal, so every
+refusal the ladder already makes keeps its order and its
+message, the categories being exclusive by construction.
+The reservation the alignment rests on is bounded as the
+ladder keeps it, to acts on a directive concept itself,
+its stamps, its deprecation and now its queueing. The
+layer's index regeneration and the staleness report's
+listing are mechanical acts that change no directive's
+content or standing and stand outside it. The seam was
+named latent by Phase 9's design reviews and stood inert
+on the prototype, which carries no directives layer, and
+the phase's evidence is a dogfood over a copy carrying a
+planted one, the refusal exercised inside the run beside
+a second execution of the pass cycle. What the evidence
+does not close stands as Phase 9 left it, a changed set
+larger than one concept awaiting a pass that authors
+changes at scale, which no dogfood fabricates. The two
+prose supersedes pointers stand as corpus findings
+still, their treatment complete under D33 and their
+repair no act of this product, and the settled acceptance
+set stands as D32 as corrected by D34 and bounded by
+D36 left it, settled, to be reopened only by a finding
+with evidence behind it.
