@@ -8,6 +8,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use looseleaf_core::check_bundle;
+use looseleaf_core::registry::regenerate_registry;
 
 mod common;
 
@@ -429,6 +430,40 @@ fn registry_defects_are_caught() {
         )
     });
     assert!(codes(&dir).contains(&"REGISTRY_WITHHELD"));
+}
+
+#[test]
+fn a_dangling_supersedes_pointer_creates_no_withheld_obligation() {
+    // A supersedes pointer naming no claim the bundle carries is
+    // the supersession graph's dangling finding. The renderer can
+    // only present carried claims, so the pointer must not also
+    // draw a withheld obligation the writer can never satisfy.
+    let dir = defect_copy("registry-dangling-pointer");
+    mutate(&dir, "daily/2026-11-02.md", |text| {
+        format!(
+            "{text}\n- [fact|high] A claim superseding a prose description.\n  - claim: 44444444444444444444444444444444\n  - quote: \"prose\"\n  - sources: message:m-9\n  - supersedes: the earlier arrangement\n"
+        )
+    });
+    regenerate_registry(&dir, "2026-11-03T00:00:00Z").expect("regenerate the registry");
+    let found = codes(&dir);
+    assert!(found.contains(&"CLAIM_SUPERSEDES_DANGLING"));
+    assert!(!found.contains(&"REGISTRY_WITHHELD"));
+}
+
+#[test]
+fn a_supersedes_pointer_outside_the_claim_layers_creates_no_withheld_obligation() {
+    // Claim blocks outside the daily and curated layers are not
+    // the registry's material, for the renderer, the supersession
+    // graph or this obligation. A bank claim pointing at a carried
+    // claim withholds nothing.
+    let dir = defect_copy("registry-bank-pointer");
+    mutate(&dir, "bank/facts.md", |text| {
+        format!(
+            "{text}\n- [fact|high] A bank claim pointing at a daily claim.\n  - claim: 55555555555555555555555555555555\n  - quote: \"pointed\"\n  - sources: message:m-9\n  - supersedes: 22222222222222222222222222222222\n"
+        )
+    });
+    regenerate_registry(&dir, "2026-11-03T00:00:00Z").expect("regenerate the registry");
+    assert!(!codes(&dir).contains(&"REGISTRY_WITHHELD"));
 }
 
 #[test]
