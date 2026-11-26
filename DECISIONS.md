@@ -1217,3 +1217,151 @@ already states. The spec review's three minors stand as
 recorded corrections in the dogfood record, the census
 premise, the queue movement's supplied set, and the
 derivation sentence this entry also corrects.
+
+## D39. Phase 11 design dispositions (2026-11-26)
+
+The closures of Phases 9 and 10 state one bound in the
+same words, a changed set larger than one concept
+awaiting a pass that authors changes at scale, which no
+dogfood fabricates. The bound stood because those
+phases' corpus offered one change the record supported.
+This phase retires the bound by performing the act it
+names, a synthesis pass over the prototype bundle under
+the shipped contract, promoting daily claims into the
+curated layer at the scale the corpus honestly supports,
+and this entry records the pass's design before any run,
+as D32, D35 and D37 recorded theirs.
+
+The census behind the design was taken over the
+prototype bundle with the claim grammar and stands
+banked with the scope's evidence. The daily layer
+carries 170 claim openings, of which 136 carry
+identities and 34 carry none and cannot be promoted,
+promotion being by identity. No concept in any layer
+carries any of the 136 identities, the curated layer
+having been built from the standing memory's prose
+rather than from claim blocks. Of the 136, 106 carry a
+quote and 30 carry none. Every claim's sources are
+message references, 190 distinct identities in bare and
+assistant prefixed forms, and every quoted claim's
+sources resolve in the runtime message store on this
+box. One hundred and four quotes verify as verbatim
+substrings of a named source message's body. Two do not,
+a1d5b8eec0aca964d7a0c498c0a2fa2e and
+f49ece3f572d99160cd755bd6798e855, and those two stand
+blocked under the contract's blocked promotion rule,
+recorded here by identity and destined for the pass
+report's blocked section, never promoted and never
+dropped silently. Two further claims,
+a3e7a6d9531679e36183a524af63b30f and
+281ff8d19533e0bbf087d1853d50c859, carry supersedes
+pointers naming no carried identity, the prose pointers
+standing since Phase 8, and the discipline's fourth gate
+excludes them. One hundred and two candidates stand
+before target assignment.
+
+The selection discipline follows the contract's and the
+command's rules together. A candidate carries an
+identity no concept already carries, a gate that
+excludes nothing on this corpus and stands recorded as
+vacuous here. It carries a quote and sources. Its quote
+verifies against a source re-read under the census's
+procedure, the runtime message store keyed by message
+identity with the quote tested as a verbatim substring
+of the body. And any supersedes pointer it carries names
+a carried identity, the promotion command refusing a
+claim whose pointer resolves to nothing. Targets are the
+curated layer's 27 concepts only, the command refusing
+every other layer, and a candidate promotes only into
+the curated concept whose stated subject, its title and
+description, covers the claim. A candidate no curated
+subject covers is not promoted and stands in the blocked
+list with that reason. No catch-all target exists, no
+new concept is created, and no claim's wording is
+altered.
+
+The contract's sentence permits promotion into the
+curated layer or an entity page, and the shipped command
+lands only in the curated layer, refusing the bundle's
+people and group pages outright. That gap stands
+recorded here as a standing finding. This phase follows
+the command, the narrower instrument. Amending the
+contract's text is a change to the contract itself and
+stands human gated, and teaching the command a second
+target layer is code work no charge in this phase
+carries, so the gap is recorded for the gate that owns
+it and neither repaired nor coded around here.
+
+The contract's human gates are engaged one by one. No
+directive is created, changed or retired and no
+directive concept is touched. No relationship is named,
+no entity page being a target. No supersession of any
+kind is performed, no promotable claim carrying a
+resolvable supersedes pointer on this corpus, so no
+claim recording a human ruling can be superseded, on
+inference or otherwise. No concept is deprecated and no
+file is deleted. The first pass gate does not bite, the
+prototype having been passed over in eight phases and
+standing as no new corpus, though this is its first
+promotion pass and the record says so rather than
+letting the earlier passes' shallower acts carry the
+point. No change to the contract is made.
+
+The pass performs the restamp the contract binds it to.
+The contract requires generated to be restamped with the
+pass's own actor and the pass time on every concept the
+pass creates or changes in meaning. The deprecation the
+earlier cycles used performs that restamp inside its own
+operation, which hid the obligation for eight phases.
+Promotion carries the target's frontmatter byte for byte
+and restamps nothing, so the pass runs stamp-generated
+over each concept its promotions change, under the
+process actor process:looseleaf-synthesis, inside the
+pass before the queue is drawn.
+
+The re-verification act stands as the earlier phases
+shaped it and is addressed at this pass's size. The pass
+closes with its report before the act opens, the queue
+standing between them as D22's handoff. The act is the
+human's own recorded act, stamp-verified by human:david
+over the queued concepts, each stamp in its own command,
+not a machine stamping a human actor and not the pass
+verifying its own changes, D20's two prohibitions
+addressed in terms and the reservation grounded in D9.
+The census bounds the queue at the curated layer's 27
+concepts. What the act verifies at any size is one
+thing, each promoted claim's verbatim carry, its
+identity, quote and sources standing unchanged against
+its daily original, which the run's record exhibits
+claim by claim for this act. The promotion list is
+authored only as large as that verification can honestly
+cover in the act's own sitting, and any candidate beyond
+it stands blocked as not promoted in this pass rather
+than waved through to enlarge the set.
+
+The run's derivations are fixed here. The census is re-
+derived over the run's fresh copy and must match this
+entry's census claim for claim. The promotion list, each
+candidate's identity, target and one line reason, with
+the blocked list beside it, is printed before the first
+promotion runs. Five derivations print with it, the
+expected queue as the changed set with the holder of a
+superseded claim argued and unable to arise here, no
+identity supersession existing in the corpus, the
+expected registry movement derived from the census as no
+movement at all, promotions changing neither the
+identity set nor the replacements map, the stampability
+of every concept the run will stamp read from the
+baseline's own finding lines, the final delta per code
+with the duplication rules stated, and the disposition
+that a lawful refusal the derivations did not predict
+stands as a tool finding, the run's coverage reported as
+it stands.
+
+The two prose supersedes pointers stand as D35 records
+them under D33, untouched by this phase, their claims
+excluded on the command's own ground rather than on any
+new ruling. The settled acceptance set stands as D32 as
+corrected by D34 and bounded by D36 and D38 left it,
+settled, to be reopened only by a finding with evidence
+behind it.
