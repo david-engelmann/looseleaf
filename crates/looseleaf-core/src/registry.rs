@@ -91,23 +91,25 @@ struct Supersession {
     reason: Option<String>,
 }
 
-/// The superseded claims sections of the whole curated layer, by old
-/// identity. When two concepts record the same supersession the last
-/// in path order wins, matching the scan's historical behaviour.
-fn scan_superseded_sections(bundle: &Bundle) -> BTreeMap<String, Supersession> {
-    let mut found: BTreeMap<String, Supersession> = BTreeMap::new();
+/// The superseded claims sections of the whole curated layer, by the
+/// supersession each entry records, its old identity and the
+/// replacement it names together. The first entry in bundle order for
+/// a supersession governs, the search the registry validator makes,
+/// so a line never borrows the date or reason of another
+/// supersession of the same claim.
+fn scan_superseded_sections(bundle: &Bundle) -> BTreeMap<(String, String), Supersession> {
+    let mut found: BTreeMap<(String, String), Supersession> = BTreeMap::new();
     for file in &bundle.files {
         if file.layer != Layer::Curated || file.reserved {
             continue;
         }
         for entry in section_entries_in(&file.body) {
-            found.insert(
-                entry.old,
-                Supersession {
+            found
+                .entry((entry.old, entry.replacement))
+                .or_insert_with(|| Supersession {
                     date: Some(entry.date),
                     reason: entry.reason,
-                },
-            );
+                });
         }
     }
     found
@@ -185,7 +187,7 @@ pub fn render_registry(bundle: &Bundle, at: &str) -> String {
     let mut lines: Vec<String> = Vec::new();
     for id in &ids {
         if let Some(replacement) = replacements.get(id) {
-            let section = sections.get(id);
+            let section = sections.get(&(id.clone(), replacement.clone()));
             let date = section
                 .and_then(|s| s.date.clone())
                 .or_else(|| dates.get(replacement).cloned());
