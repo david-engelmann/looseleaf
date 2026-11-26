@@ -1111,3 +1111,35 @@ D33 and their repair no act of this product. The
 acceptance set stands as D32 as corrected by D34 left it,
 settled, to be reopened only by a finding with evidence
 behind it.
+
+## D36. Phase 9 checkpoint dispositions (2026-11-26)
+
+The checkpoint reviews over the Phase 9 diff found the
+phase faithful to its scope, the standards review with no
+findings at any severity, the spec review with one minor,
+and the red team with no P1 or P2 and three P3, all record
+precision and none touching the code. The dispositions
+stand here. The alignment's reach is one corpus shape
+wider than D35's mechanics paragraph states. Where a
+claim carries exactly one section entry and that entry
+names a replacement no claimant carries, the old renderer
+lent the withheld line the stray entry's date and reason
+and the new keying misses it, so the line falls back to
+the daily date with no reason. The change is the intended
+direction, a rendering correction beside the disagreement
+that charged it, and the second test covers the shape in
+its fork form. The dogfood record's account of the second
+regeneration is bounded here to what its examination
+proves, the interposed acts having touched one concept's
+frontmatter and added a claimless synthesis concept, the
+rendering consulting curated bodies for claims and
+section entries and neither act having moved one. The
+queue's premise in that record holds as of the queue's
+own moment, the report concept the pass also created
+standing after the queue printed, outside it by the
+design D22 records, the printed queue pasted into the
+report the pass then wrote. The spec review's minor, the
+report's sections executed under the writer's fixed
+vocabulary where the scope had named a section it does
+not carry, stands dispositioned in the dogfood record
+where the run produced it.
